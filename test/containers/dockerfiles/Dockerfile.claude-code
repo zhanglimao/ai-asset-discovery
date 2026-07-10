@@ -1,0 +1,26 @@
+FROM node:22-slim
+
+# Install Claude Code CLI
+RUN npm install -g --registry=https://registry.npmmirror.com @anthropic-ai/claude-code && \
+    mkdir -p /root/.claude /root/.claude-code
+
+# Claude Code skills + config
+RUN mkdir -p /root/.claude/skills/code-review && \
+    echo '{"model":"claude-sonnet-4-20250514","theme":"dark"}' > /root/.claude/config.json && \
+    echo '---' > /root/.claude/skills/code-review/skill.md && \
+    echo 'name: code-review' >> /root/.claude/skills/code-review/skill.md && \
+    echo 'description: Review code for bugs, security issues, and style problems' >> /root/.claude/skills/code-review/skill.md && \
+    echo 'version: "1.0"' >> /root/.claude/skills/code-review/skill.md && \
+    echo 'tools:' >> /root/.claude/skills/code-review/skill.md && \
+    echo '  - read_file' >> /root/.claude/skills/code-review/skill.md && \
+    echo '  - grep_search' >> /root/.claude/skills/code-review/skill.md && \
+    echo '  - run_in_terminal' >> /root/.claude/skills/code-review/skill.md && \
+    echo 'prompt: "You are an expert code reviewer..."' >> /root/.claude/skills/code-review/skill.md && \
+    echo '---' >> /root/.claude/skills/code-review/skill.md && \
+    echo '# Code Review Skill' >> /root/.claude/skills/code-review/skill.md
+
+# Hardlink for process detection
+RUN ln -f /bin/sleep /usr/local/bin/claude-code
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

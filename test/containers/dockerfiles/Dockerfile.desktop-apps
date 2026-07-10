@@ -1,0 +1,114 @@
+FROM ubuntu:22.04
+
+# Use hardlinks to /bin/sleep so /proc/PID/comm = agent name (not "sleep").
+# This way both name_patterns and cmd_patterns match correctly.
+# Also create config directories for file/skill-based detection.
+
+# ── Windsurf ──────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/windsurf && \
+    mkdir -p /root/.windsurf/extensions /root/.windsurf
+
+# ── ChatGPT Desktop ───────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/chatgpt-desktop && \
+    mkdir -p /root/.config/ChatGPT
+
+# ── Claude Desktop ────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Claude && \
+    mkdir -p /root/.config/Claude
+
+# ── WorkBuddy (腾讯) ──────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/WorkBuddy && \
+    mkdir -p /root/.workbuddy
+
+# ── Marvis (腾讯应用宝) ────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Marvis
+
+# ── Qclaw (腾讯电脑管家) ──────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Qclaw
+
+# ── QoderWork (阿里) ──────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/QoderWork
+
+# ── TRAE Work (字节跳动) ──────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/TRAE && \
+    mkdir -p /root/.trae
+
+# ── 豆包专业版 ────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/doubao && \
+    mkdir -p /root/.doubao
+
+# ── Kimi Work ─────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Kimi && \
+    mkdir -p /root/.kimi
+
+# ── DuMate (百度) ─────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/DuMate
+
+# ── 阶跃AI ────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/jieyue
+
+# ── AutoClaw (智谱AI) ─────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/AutoClaw
+
+# ── lobsterAI (网易) ──────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/lobster
+
+# ── Cola ──────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Cola
+
+# ── Alice ─────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Alice
+
+# ── 牛马AI ────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/niuma
+
+# ── Manus ─────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Manus
+
+# ── Fellou ─────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Fellou
+
+# ── Genspark ──────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Genspark
+
+# ── AutoGLM (智谱AI) ─────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/AutoGLM
+
+# ── Dify ──────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/dify
+
+# ── 扣子 (Coze) ───────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/coze
+
+# ── Qwen Code ─────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/qwen && \
+    mkdir -p /root/.qwen/skills
+
+# ── OpenHands ─────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/openhands
+
+# ── Goose ─────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/goose
+
+# ── Warp ──────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/warp
+
+# ── Devin ─────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/devin && \
+    mkdir -p /root/.devin
+
+# ── Codex CLI ─────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/codex && \
+    mkdir -p /root/.codex
+
+# ── Tabnine CLI ───────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/tabnine
+
+# ── 腾讯元器 ──────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/yuanqi
+
+# ── 钉钉AI助理 ─────────────────────────────────────────
+# (hardlink name is lowercase "dingtalk" so /proc/PID/comm = "dingtalk")
+RUN ln /bin/sleep /usr/local/bin/dingtalk
+
+CMD ["sleep", "infinity"]

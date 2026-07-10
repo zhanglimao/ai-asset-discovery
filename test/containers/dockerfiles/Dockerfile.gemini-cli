@@ -1,0 +1,25 @@
+FROM node:22-slim
+
+# Install Gemini CLI
+RUN npm install -g --registry=https://registry.npmmirror.com @google/gemini-cli && \
+    mkdir -p /root/.gemini
+
+# Gemini CLI skills + config
+RUN mkdir -p /root/.gemini/skills/code-review && \
+    echo '{"model":"gemini-2.5-pro","project":"test-project"}' > /root/.gemini/config.json && \
+    echo '---' > /root/.gemini/skills/code-review/skill.md && \
+    echo 'name: gemini-code-review' >> /root/.gemini/skills/code-review/skill.md && \
+    echo 'description: Review code using Gemini AI' >> /root/.gemini/skills/code-review/skill.md && \
+    echo 'version: "1.0"' >> /root/.gemini/skills/code-review/skill.md && \
+    echo 'tools:' >> /root/.gemini/skills/code-review/skill.md && \
+    echo '  - read_file' >> /root/.gemini/skills/code-review/skill.md && \
+    echo '  - search_code' >> /root/.gemini/skills/code-review/skill.md && \
+    echo 'prompt: "Review the code for issues..."' >> /root/.gemini/skills/code-review/skill.md && \
+    echo '---' >> /root/.gemini/skills/code-review/skill.md && \
+    echo '# Gemini Code Review' >> /root/.gemini/skills/code-review/skill.md
+
+# Hardlink for process detection
+RUN ln -f /bin/sleep /usr/local/bin/gemini-cli
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

@@ -1,0 +1,91 @@
+FROM ubuntu:22.04
+
+# =========================================================================
+# GitHub Copilot
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/github.copilot-1.200.0
+RUN echo '{"name":"copilot","publisher":"GitHub","displayName":"GitHub Copilot","version":"1.200.0","description":"Your AI pair programmer","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["ai","copilot","autocomplete"],"contributes":{"commands":[]}}' > /root/.vscode/extensions/github.copilot-1.200.0/package.json
+
+# GitHub Copilot Chat (agent mode)
+RUN mkdir -p /root/.vscode/extensions/github.copilot-chat-0.22.0
+RUN echo '{"name":"copilot-chat","publisher":"GitHub","displayName":"GitHub Copilot Chat","version":"0.22.0","description":"AI chat with agent mode","engines":{"vscode":"^1.80.0"},"categories":["Chat","Machine Learning"],"keywords":["ai","chat","agent","copilot"],"activationEvents":["onChatParticipant:copilot","onAgent:copilot"],"main":"./dist/agent/extension.js","contributes":{"agent":{"id":"copilot-agent","name":"GitHub Copilot Agent","tools":["read_file","edit","terminal","semantic_search"]},"chatParticipants":[{"id":"copilot","name":"GitHub Copilot"}]}}' > /root/.vscode/extensions/github.copilot-chat-0.22.0/package.json
+RUN mkdir -p /root/.vscode/extensions/github.copilot-chat-0.22.0/dist/agent && echo '// Agent entry' > /root/.vscode/extensions/github.copilot-chat-0.22.0/dist/agent/extension.js
+
+# Cline
+RUN mkdir -p /root/.vscode/extensions/saoudrizwan.claude-dev-3.5.0
+RUN echo '{"name":"claude-dev","publisher":"saoudrizwan","displayName":"Cline","version":"3.5.0","description":"Autonomous coding agent","engines":{"vscode":"^1.80.0"},"categories":["Other"],"keywords":["ai","agent","claude","cline","autonomous","coding"],"activationEvents":["onAgent:cline","onCommand:cline.plusButtonClicked"],"contributes":{"commands":[{"command":"cline.plusButtonClicked","title":"Cline: New Task"},{"command":"cline.createAgent","title":"Cline: Create Agent"}]}}' > /root/.vscode/extensions/saoudrizwan.claude-dev-3.5.0/package.json
+RUN mkdir -p /root/.cline/skills
+
+# Continue
+RUN mkdir -p /root/.vscode/extensions/continue.continue-1.2.0
+RUN echo '{"name":"continue","publisher":"Continue","displayName":"Continue - AI Code Assistant","version":"1.2.0","description":"Open-source AI code assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["ai","assistant","code","llm","agent","continue"],"activationEvents":["onCommand:continue.focusContinueInput"],"contributes":{"commands":[{"command":"continue.focusContinueInput","title":"Continue: Focus Input"}]}}' > /root/.vscode/extensions/continue.continue-1.2.0/package.json
+RUN mkdir -p /root/.continue/agents
+
+# =========================================================================
+# Amazon Q Developer
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/amazonwebservices.amazon-q-vscode-1.50.0
+RUN echo '{"name":"amazon-q-vscode","publisher":"amazonwebservices","displayName":"Amazon Q Developer","version":"1.50.0","description":"AWS AI coding assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["aws","q","developer","codewhisperer","ai"]}' > /root/.vscode/extensions/amazonwebservices.amazon-q-vscode-1.50.0/package.json
+RUN mkdir -p /root/.aws/q
+
+# =========================================================================
+# Tabnine
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/TabNine.tabnine-vscode-3.100.0
+RUN echo '{"name":"tabnine-vscode","publisher":"TabNine","displayName":"Tabnine","version":"3.100.0","description":"Privacy-focused AI autocomplete","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["tabnine","ai","autocomplete","code"]}' > /root/.vscode/extensions/TabNine.tabnine-vscode-3.100.0/package.json
+RUN mkdir -p /root/.tabnine/agent/skills
+
+# =========================================================================
+# Sourcegraph Cody
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/sourcegraph.cody-ai-1.40.0
+RUN echo '{"name":"cody-ai","publisher":"sourcegraph","displayName":"Sourcegraph Cody","version":"1.40.0","description":"AI coding assistant with enterprise context","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["cody","sourcegraph","context","agent","ai"]}' > /root/.vscode/extensions/sourcegraph.cody-ai-1.40.0/package.json
+RUN mkdir -p /root/.sourcegraph
+
+# =========================================================================
+# Cursor
+# =========================================================================
+RUN mkdir -p /root/.cursor/extensions
+RUN mkdir -p /root/.cursor
+
+# =========================================================================
+# Roo Code
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/rooveterinaryinc.roo-cline-1.0.0
+RUN echo '{"name":"roo-cline","publisher":"rooveterinaryinc","displayName":"Roo Code","version":"1.0.0","description":"AI coding agent","engines":{"vscode":"^1.80.0"},"categories":["Other"],"keywords":["roo","agent","coding","ai"]}' > /root/.vscode/extensions/rooveterinaryinc.roo-cline-1.0.0/package.json
+
+# =========================================================================
+# Augment
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/augment.vscode-augment-1.0.0
+RUN echo '{"name":"vscode-augment","publisher":"augment","displayName":"Augment","version":"1.0.0","description":"AI-powered development","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["augment","ai","agent"]}' > /root/.vscode/extensions/augment.vscode-augment-1.0.0/package.json
+RUN mkdir -p /root/.augment/skills
+
+# =========================================================================
+# Trae (ByteDance)
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/bytedance.trae-1.0.0
+RUN echo '{"name":"trae","publisher":"bytedance","displayName":"Trae","version":"1.0.0","description":"ByteDance AI IDE","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["trae","ai","agent"]}' > /root/.vscode/extensions/bytedance.trae-1.0.0/package.json
+RUN mkdir -p /root/.trae/skills
+
+# =========================================================================
+# Lingma (通义灵码)
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/alibaba.tongyi-lingma-2.0.0
+RUN echo '{"name":"tongyi-lingma","publisher":"alibaba","displayName":"TONGYI Lingma","version":"2.0.0","description":"Alibaba AI coding assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["lingma","tongyi","alibaba","agent","ai"]}' > /root/.vscode/extensions/alibaba.tongyi-lingma-2.0.0/package.json
+
+# =========================================================================
+# CodeBuddy (腾讯)
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/tencent.codebuddy-1.0.0
+RUN echo '{"name":"codebuddy","publisher":"tencent","displayName":"CodeBuddy","version":"1.0.0","description":"Tencent AI coding assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["codebuddy","tencent","craft","agent"]}' > /root/.vscode/extensions/tencent.codebuddy-1.0.0/package.json
+RUN mkdir -p /root/.codebuddy/skills
+
+# =========================================================================
+# Qoder (阿里)
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/alibaba.qoder-1.0.0
+RUN echo '{"name":"qoder","publisher":"alibaba","displayName":"Qoder","version":"1.0.0","description":"Alibaba intelligent coding platform","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["qoder","alibaba","agent"]}' > /root/.vscode/extensions/alibaba.qoder-1.0.0/package.json
+RUN mkdir -p /root/.qoder/skills
+
+CMD ["sleep", "infinity"]

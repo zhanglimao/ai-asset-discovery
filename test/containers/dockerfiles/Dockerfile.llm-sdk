@@ -1,0 +1,14 @@
+FROM python:3.12-slim
+
+# Install real LLM SDK packages
+RUN pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    openai anthropic langchain langgraph langchain-openai langchain-anthropic \
+    llama-index autogen-agentchat crewai
+
+# Install nodejs + npm LLM SDKs
+RUN apt-get update && apt-get install -y nodejs npm && \
+    npm install -g --registry=https://registry.npmmirror.com @anthropic-ai/sdk openai langchain && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

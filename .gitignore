@@ -1,0 +1,28 @@
+# ── Go 构建产物 ──────────────────────────────────────────
+/discovery
+*.exe
+*.test
+*.out
+vendor/
+
+# ── 测试输出 ────────────────────────────────────────────
+test/containers/discovery
+test/containers/results/*.json
+test/containers/results/*.log
+
+# ── IDE / 编辑器 ────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── 操作系统 ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.directory
+
+# ── 临时文件 ────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig

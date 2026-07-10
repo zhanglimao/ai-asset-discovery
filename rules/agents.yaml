@@ -1,0 +1,783 @@
+version: "1.0"
+
+agents:
+  # ============================================================
+  # IDE Extensions (VS Code / Cursor)
+  # ============================================================
+  - name: github-copilot
+    display_name: "GitHub Copilot"
+    description: "GitHub Copilot AI coding assistant"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.cursor/extensions/GitHub.copilot*
+    features:
+      extensions:
+        - "GitHub.copilot"
+      binaries:
+        - copilot
+
+  - name: github-copilot-agent
+    display_name: "GitHub Copilot Agent"
+    description: "GitHub Copilot with agent mode enabled"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.cursor/extensions/GitHub.copilot*
+    features:
+      extensions:
+        - "GitHub.copilot"
+      agent_signals:
+        - "createAgent"
+        - "registerAgent"
+        - "tool_use"
+
+  - name: cline
+    display_name: "Cline"
+    description: "Cline AI coding agent for VS Code"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.cline
+    features:
+      extensions:
+        - "saoudrizwan.claude-dev"
+      agent_signals:
+        - "createAgent"
+        - "tool_use"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.cline/skills
+      extensions:
+        - ".md"
+        - ".yaml"
+        - ".yml"
+        - ".json"
+      keywords:
+        - skill
+        - description
+        - tool
+        - prompt
+      auto_discover: true
+
+  - name: continue
+    display_name: "Continue"
+    description: "Continue open-source AI code assistant"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.continue
+    features:
+      extensions:
+        - "Continue.continue"
+      agent_signals:
+        - "agent"
+        - "tool"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.continue/agents
+      extensions:
+        - ".md"
+        - ".yaml"
+        - ".json"
+      keywords:
+        - agent
+        - skill
+        - description
+        - tool
+      auto_discover: true
+
+  - name: roo-code
+    display_name: "Roo Code"
+    description: "AI coding agent for VS Code"
+    category: "ide_extension"
+    min_confidence: possible
+    features:
+      extensions:
+        - "rooveterinaryinc.roo-cline"
+      agent_signals:
+        - agent
+        - coding
+
+  - name: augment
+    display_name: "Augment"
+    description: "AI-powered development environment"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.augment/skills
+    features:
+      extensions:
+        - "augment.vscode-augment"
+      agent_signals:
+        - agent
+
+  - name: amazon-q-developer
+    display_name: "Amazon Q Developer"
+    description: "AWS-native AI coding assistant"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.aws/q
+    features:
+      extensions:
+        - "amazonwebservices.amazon-q-vscode"
+      processes:
+        - codewhisperer
+
+  - name: tabnine
+    display_name: "Tabnine"
+    description: "Privacy-focused AI code completion"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.tabnine
+    features:
+      extensions:
+        - "TabNine.tabnine-vscode"
+      processes:
+        - tabnine
+
+  - name: sourcegraph-cody
+    display_name: "Sourcegraph Cody"
+    description: "AI coding assistant with enterprise context engine"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.sourcegraph
+    features:
+      extensions:
+        - "sourcegraph.cody-ai"
+
+  - name: codebuddy
+    display_name: "CodeBuddy (腾讯)"
+    description: "Tencent cloud AI coding assistant with Craft mode"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.codebuddy
+    features:
+      extensions:
+        - "tencent.codebuddy"
+
+  - name: qoder
+    display_name: "Qoder (阿里)"
+    description: "Alibaba intelligent coding platform"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.qoder
+    features:
+      extensions:
+        - "alibaba.qoder"
+      processes:
+        - qoder
+
+  - name: lingma
+    display_name: "Lingma (通义灵码)"
+    description: "Alibaba Tongyi Lingma coding agent"
+    category: "ide_extension"
+    min_confidence: possible
+    features:
+      extensions:
+        - "alibaba.tongyi-lingma"
+
+  - name: trae
+    display_name: "Trae"
+    description: "ByteDance AI IDE"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.trae/skills
+    features:
+      extensions:
+        - "bytedance.trae"
+
+  # ============================================================
+  # CLI Agents (Process + Binary + Package detection)
+  # ============================================================
+  - name: aider
+    display_name: "Aider"
+    description: "Aider AI pair programming tool"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.aider.conf.yml
+    features:
+      processes:
+        - aider
+      binaries:
+        - aider
+      packages:
+        - aider-chat
+      version_regex: "aider[- ]v?([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: aider
+      args: ["--version"]
+      version_regex: "aider[- ]v?([0-9]+\\.[0-9]+\\.[0-9]+)"
+    config:
+      format: env
+      paths:
+        - ~/.aider.conf.yml
+        - .env
+      field_map:
+        model: "AIDER_MODEL"
+        api_key: "OPENAI_API_KEY"
+        editor: "AIDER_EDITOR"
+
+  - name: claude-code
+    display_name: "Claude Code"
+    description: "Anthropic Claude Code CLI agent"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.claude
+      - path: ~/.claude-code
+    features:
+      processes:
+        - claude-code
+      binaries:
+        - claude
+      packages:
+        - "@anthropic-ai/claude-code"
+      version_regex: "claude.code.*(?:v|@)?([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: claude
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.claude/skills
+        - ~/.claude-code/skills
+      extensions:
+        - ".md"
+        - ".yaml"
+        - ".yml"
+      keywords:
+        - skill
+        - description
+        - tool
+        - prompt
+      auto_discover: true
+
+  - name: openclaw
+    display_name: "OpenClaw"
+    description: "OpenClaw personal AI agent"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.openclaw
+    features:
+      processes:
+        - openclaw
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.openclaw/skills
+        - ~/.openclaw/tools
+      extensions:
+        - ".md"
+        - ".yaml"
+        - ".yml"
+        - ".json"
+      keywords:
+        - skill
+        - description
+        - tool
+        - prompt
+      auto_discover: true
+
+  - name: gemini-cli
+    display_name: "Gemini CLI"
+    description: "Google Gemini CLI agent with MCP support"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.gemini
+    features:
+      processes:
+        - gemini-cli
+      binaries:
+        - gemini
+      packages:
+        - "@google/gemini-cli"
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: gemini
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.gemini/skills
+      extensions:
+        - ".md"
+        - ".yaml"
+        - ".yml"
+      keywords:
+        - skill
+        - description
+        - tool
+      auto_discover: true
+
+  - name: devin
+    display_name: "Devin"
+    description: "Fully autonomous AI software engineer"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.devin
+    features:
+      processes:
+        - devin
+        - cognition
+
+  - name: codex-cli
+    display_name: "OpenAI Codex CLI"
+    description: "OpenAI terminal agent with multi-agent collaboration"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.codex
+    features:
+      processes:
+        - codex
+      packages:
+        - openai/codex
+
+  - name: qwen-code
+    display_name: "Qwen Code"
+    description: "Alibaba Qwen coding agent"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.qwen/skills
+    features:
+      processes:
+        - qwen-code
+        - qwen
+
+  - name: openhands
+    display_name: "OpenHands"
+    description: "Open-source AI software dev agent"
+    category: "cli_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - openhands
+
+  - name: goose
+    display_name: "Goose"
+    description: "AI development agent"
+    category: "cli_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - goose
+
+  - name: warp
+    display_name: "Warp"
+    description: "AI-powered terminal"
+    category: "cli_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - warp
+
+  # ============================================================
+  # Desktop Applications
+  # ============================================================
+  - name: claude-desktop
+    display_name: "Claude Desktop"
+    description: "Anthropic Claude Desktop application"
+    category: "desktop_app"
+    min_confidence: possible
+    paths:
+      - path: ~/Library/Application Support/Claude
+        os: darwin
+      - path: ~/.config/Claude
+        os: linux
+      - path: "%APPDATA%/Claude"
+        os: windows
+    features:
+      processes:
+        - Claude
+        - Claude Desktop
+      version_regex: "Claude Desktop[- ]?v?([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/Library/Application Support/Claude/skills
+        - ~/.config/Claude/skills
+        - "%APPDATA%/Claude/skills"
+      extensions:
+        - ".md"
+        - ".yaml"
+        - ".yml"
+      keywords:
+        - skill
+        - description
+        - tool
+        - prompt
+
+  - name: chatgpt-desktop
+    display_name: "ChatGPT Desktop"
+    description: "OpenAI ChatGPT desktop application"
+    category: "desktop_app"
+    min_confidence: possible
+    paths:
+      - path: ~/Library/Application Support/ChatGPT
+        os: darwin
+      - path: ~/.config/ChatGPT
+        os: linux
+      - path: "%APPDATA%/ChatGPT"
+        os: windows
+    features:
+      processes:
+        - chatgpt
+        - ChatGPT
+
+  # ============================================================
+  # IDEs with AI capabilities
+  # ============================================================
+  - name: cursor
+    display_name: "Cursor"
+    description: "AI-first code editor based on VS Code"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.cursor
+    features:
+      processes:
+        - cursor
+      extensions:
+        - "cursor"
+
+  - name: cursor-composer
+    display_name: "Cursor Composer"
+    description: "Cursor IDE Composer Agent"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.cursor
+    features:
+      extensions:
+        - "cursor"
+
+  - name: windsurf
+    display_name: "Windsurf IDE"
+    description: "Codeium Windsurf AI-powered IDE"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.windsurf
+      - path: "%APPDATA%/Windsurf"
+        os: windows
+    features:
+      processes:
+        - windsurf
+
+  # ============================================================
+  # Desktop & Personal Assistants
+  # ============================================================
+  - name: workbuddy
+    display_name: "WorkBuddy"
+    description: "Tencent full-scene workplace AI agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    paths:
+      - path: ~/.workbuddy
+    features:
+      processes:
+        - WorkBuddy
+
+  - name: marvis
+    display_name: "Marvis"
+    description: "OS-level assistant with multi-expert agent collaboration"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - Marvis
+
+  - name: qclaw
+    display_name: "Qclaw"
+    description: "Tencent PC Manager privacy-first desktop agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - Qclaw
+
+  - name: qoderwork
+    display_name: "QoderWork (阿里)"
+    description: "Alibaba office AI agent with self-reflection"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - QoderWork
+
+  - name: trae-work
+    display_name: "TRAE Work"
+    description: "ByteDance Feishu-integrated AI assistant"
+    category: "desktop_assistant"
+    min_confidence: possible
+    paths:
+      - path: ~/.trae
+    features:
+      processes:
+        - TRAE
+
+  - name: doubao-pro
+    display_name: "豆包专业版"
+    description: "ByteDance office-focused desktop AI agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    paths:
+      - path: ~/.doubao
+    features:
+      processes:
+        - doubao
+        - 豆包
+
+  - name: kimi-work
+    display_name: "Kimi Work"
+    description: "Moonshot AI knowledge worker agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    paths:
+      - path: ~/.kimi
+    features:
+      processes:
+        - Kimi
+
+  - name: dumate
+    display_name: "DuMate (百度)"
+    description: "Baidu AI information processing agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - DuMate
+
+  - name: jieyue-ai
+    display_name: "阶跃AI"
+    description: "StepStar OpenClaw-based desktop agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - jieyue
+
+  - name: autoclaw
+    display_name: "AutoClaw (智谱AI)"
+    description: "Zhipu AI desktop agent with 50 skills"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - AutoClaw
+
+  - name: lobsterai
+    display_name: "lobsterAI (网易)"
+    description: "NetEase phone-PC interop agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - lobster
+
+  - name: cola
+    display_name: "Cola"
+    description: "AI OS with conscious memory"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - Cola
+
+  - name: alice
+    display_name: "Alice"
+    description: "Personified companion desktop agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - Alice
+
+  - name: niuma-ai
+    display_name: "牛马AI"
+    description: "Local-first privacy offline agent"
+    category: "desktop_assistant"
+    min_confidence: possible
+    features:
+      processes:
+        - niuma
+
+  # ============================================================
+  # Browser Agents
+  # ============================================================
+  - name: manus
+    display_name: "Manus"
+    description: "Autonomous digital worker with browser extension"
+    category: "browser_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - Manus
+
+  - name: claude-computer-use
+    display_name: "Claude Computer Use"
+    description: "Anthropic desktop/browser control"
+    category: "browser_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - computer-use
+
+  - name: fellou
+    display_name: "Fellou"
+    description: "Agent-native browser"
+    category: "browser_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - Fellou
+
+  - name: genspark
+    display_name: "Genspark"
+    description: "Browser with 169+ on-device models"
+    category: "browser_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - Genspark
+
+  - name: autoglm
+    display_name: "AutoGLM (智谱AI)"
+    description: "Cloud device operation agent"
+    category: "browser_agent"
+    min_confidence: possible
+    features:
+      processes:
+        - AutoGLM
+
+  # ============================================================
+  # Agent Frameworks (SDK-level detection)
+  # ============================================================
+  - name: dify
+    display_name: "Dify"
+    description: "Open-source LLM app dev platform"
+    category: "agent_framework"
+    min_confidence: possible
+    features:
+      processes:
+        - dify
+
+  - name: coze
+    display_name: "扣子 (Coze)"
+    description: "ByteDance low-code agent platform"
+    category: "agent_framework"
+    min_confidence: possible
+    features:
+      processes:
+        - coze
+
+  - name: llm-sdk-detected
+    display_name: "LLM SDK (Generic)"
+    description: "Detected via LLM SDK dependencies (LangChain, OpenAI, etc.)"
+    category: "sdk_detection"
+    min_confidence: ghost
+    paths:
+      - path: ~/Library/Caches
+        os: darwin
+    features:
+      processes:
+        - langchain
+        - langgraph
+        - llama_index
+        - autogen
+        - crewai
+
+  - name: langchain
+    display_name: "LangChain/LangGraph"
+    description: "Multi-agent orchestration framework"
+    category: "agent_framework"
+    min_confidence: ghost
+    features:
+      packages:
+        - langchain
+        - langgraph
+
+  - name: llamaindex
+    display_name: "LlamaIndex"
+    description: "Data-centric RAG agent framework"
+    category: "agent_framework"
+    min_confidence: ghost
+    features:
+      packages:
+        - llama-index
+        - llama_index
+
+  - name: autogen
+    display_name: "AutoGen (微软)"
+    description: "Microsoft multi-agent framework"
+    category: "agent_framework"
+    min_confidence: ghost
+    features:
+      packages:
+        - autogen
+        - pyautogen
+
+  - name: crewai
+    display_name: "CrewAI"
+    description: "Role-based multi-agent framework"
+    category: "agent_framework"
+    min_confidence: ghost
+    features:
+      packages:
+        - crewai
+
+  # ============================================================
+  # Web Tools
+  # ============================================================
+  - name: bolt-new
+    display_name: "Bolt.new"
+    description: "Browser-based full-stack web app generator"
+    category: "web_tool"
+    min_confidence: ghost
+    paths:
+      - path: ~/.bolt
+
+  - name: replit-agent
+    display_name: "Replit Agent"
+    description: "Full-stack app generator and auto-deployer"
+    category: "web_tool"
+    min_confidence: ghost
+    paths:
+      - path: ~/.replit
+
+  - name: dingtalk-ai
+    display_name: "钉钉AI助理"
+    description: "DingTalk collaborative AI assistant"
+    category: "agent_framework"
+    min_confidence: possible
+    features:
+      processes:
+        - dingtalk
+
+  - name: tencent-yuanqi
+    display_name: "腾讯元器"
+    description: "WeChat ecosystem agent platform"
+    category: "agent_framework"
+    min_confidence: possible
+    features:
+      processes:
+        - yuanqi

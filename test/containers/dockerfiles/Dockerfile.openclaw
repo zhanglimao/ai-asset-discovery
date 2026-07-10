@@ -1,0 +1,29 @@
+FROM node:22-slim
+
+# Install OpenClaw
+RUN npm install -g --registry=https://registry.npmmirror.com openclaw && \
+    mkdir -p /root/.openclaw
+
+# OpenClaw skills + tools + config
+RUN mkdir -p /root/.openclaw/skills/code-review /root/.openclaw/tools && \
+    echo '{"llm":{"model":"claude-sonnet-4-20250514","provider":"anthropic"}}' > /root/.openclaw/config.json && \
+    echo '---' > /root/.openclaw/skills/code-review/skill.md && \
+    echo 'name: code-review' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo 'description: Review code for bugs, style, and security issues' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo 'version: "1.0"' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo 'tools:' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo '  - read_file' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo '  - run_command' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo '  - browser' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo 'prompt: "You are a code reviewer. Review the provided code..."' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo '---' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo '# Code Review' >> /root/.openclaw/skills/code-review/skill.md && \
+    echo 'name: deploy' > /root/.openclaw/tools/deploy.yaml && \
+    echo 'description: Deploy the project to production' >> /root/.openclaw/tools/deploy.yaml && \
+    echo 'command: "./deploy.sh"' >> /root/.openclaw/tools/deploy.yaml
+
+# Hardlink for process detection
+RUN ln -f /bin/sleep /usr/local/bin/openclaw
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

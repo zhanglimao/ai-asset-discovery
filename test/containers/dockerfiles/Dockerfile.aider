@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+# Install aider CLI agent (real pip package)
+RUN pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple aider-chat && mkdir -p /root/.aider
+
+# Create aider config
+RUN echo 'model: anthropic/claude-sonnet-4-20250514' > /root/.aider.conf.yml && \
+    echo 'editor: vim' >> /root/.aider.conf.yml && \
+    echo 'dark_mode: true' >> /root/.aider.conf.yml && \
+    echo 'git: true' >> /root/.aider.conf.yml && \
+    echo 'AIDER_MODEL=anthropic/claude-sonnet-4-20250514' > /root/.env && \
+    echo 'AIDER_EDITOR=vim' >> /root/.env
+
+# Hardlink for process detection (overwrites real binary so comm= aider)
+RUN ln -f /bin/sleep /usr/local/bin/aider
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]
