@@ -576,8 +576,8 @@ agents:
     category: "ide_extension"
     min_confidence: possible
     ide:
-      paths:
-        - ` + extDir + `
+      scan_paths:
+        - path: "` + extDir + `"
       ext_ids:
         - "github.copilot"
 
@@ -587,8 +587,8 @@ agents:
     category: "ide_extension"
     min_confidence: confirmed
     ide:
-      paths:
-        - ` + extDir + `
+      scan_paths:
+        - path: "` + extDir + `"
       ext_ids:
         - "github.copilot"
       agent_signals:
@@ -760,8 +760,8 @@ agents:
     display_name: "GitHub Copilot"
     min_confidence: possible
     ide:
-      paths:
-        - ` + extDir + `
+      scan_paths:
+        - path: ` + extDir + `
       ext_ids:
         - "github.copilot"
 `)
@@ -848,8 +848,8 @@ agents:
     display_name: "Copilot Ext"
     min_confidence: possible
     ide:
-      paths:
-        - ` + extDir + `
+      scan_paths:
+        - path: ` + extDir + `
       ext_ids:
         - "github.copilot"
 `)

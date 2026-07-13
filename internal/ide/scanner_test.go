@@ -70,8 +70,8 @@ func TestScanner_Scan_ExtIDMatch(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot"},
 		},
 	}
 
@@ -105,8 +105,8 @@ func TestScanner_Scan_ExtIDGlob(t *testing.T) {
 		DisplayName:   "Copilot Chat",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot*"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot*"},
 		},
 	}
 
@@ -131,8 +131,8 @@ func TestScanner_Scan_ExtIDNoMatch(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot"},
 		},
 	}
 
@@ -159,8 +159,8 @@ func TestScanner_Scan_KeywordMatch(t *testing.T) {
 		DisplayName:   "AI Helper",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:    []string{extIDEDir},
-			Keywords: []string{"ai"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Keywords:  []string{"ai"},
 		},
 	}
 
@@ -187,8 +187,8 @@ func TestScanner_Scan_KeywordInExtensionKeywords(t *testing.T) {
 		DisplayName:   "Code Assistant",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:    []string{extIDEDir},
-			Keywords: []string{"copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Keywords:  []string{"copilot"},
 		},
 	}
 
@@ -213,8 +213,8 @@ func TestScanner_Scan_KeywordInDisplayName(t *testing.T) {
 		DisplayName:   "AI Extension",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:    []string{extIDEDir},
-			Keywords: []string{"ai"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Keywords:  []string{"ai"},
 		},
 	}
 
@@ -241,8 +241,8 @@ func TestScanner_Scan_KeywordNoMatch(t *testing.T) {
 		DisplayName:   "AI Helper",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:    []string{extIDEDir},
-			Keywords: []string{"ai"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Keywords:  []string{"ai"},
 		},
 	}
 
@@ -271,8 +271,8 @@ func TestScanner_Scan_DependencyMatch(t *testing.T) {
 		DisplayName:   "Claude Extension",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:   []string{extIDEDir},
-			Depends: []string{"anthropic"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Depends:   []string{"anthropic"},
 		},
 	}
 
@@ -301,8 +301,8 @@ func TestScanner_Scan_DependencyNoMatch(t *testing.T) {
 		DisplayName:   "Claude Extension",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:   []string{extIDEDir},
-			Depends: []string{"anthropic"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Depends:   []string{"anthropic"},
 		},
 	}
 
@@ -337,7 +337,7 @@ func TestScanner_Scan_CheckAgentCapability(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:        []string{extIDEDir},
+			ScanPaths:    []model.IDEScanPath{{Path: extIDEDir}},
 			ExtIDs:       []string{"github.copilot"},
 			AgentSignals: []string{"activate"},
 		},
@@ -376,8 +376,8 @@ func TestScanner_Scan_CheckAgentCapability_NoAgent(t *testing.T) {
 		DisplayName:   "Simple Extension",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"someone.simple-ext"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"someone.simple-ext"},
 		},
 	}
 
@@ -407,8 +407,8 @@ func TestScanner_Scan_ExtractConfigValue(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot"},
 			ConfigKeys: []model.ConfigExtract{
 				{Field: "version", KeyPath: "version"},
 			},
@@ -439,8 +439,8 @@ func TestScanner_Scan_ExtractConfigValue_Unknown(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot"},
 			ConfigKeys: []model.ConfigExtract{
 				{Field: "nonexistent", KeyPath: "nonexistent.field"},
 			},
@@ -466,8 +466,8 @@ func TestScanner_Scan_NonExistentPath(t *testing.T) {
 		DisplayName:   "Test Agent",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{"/tmp/nonexistent-path-xyzabc"},
-			ExtIDs: []string{"test.agent"},
+			ScanPaths: []model.IDEScanPath{{Path: "/tmp/nonexistent-path-xyzabc"}},
+			ExtIDs:    []string{"test.agent"},
 		},
 	}
 
@@ -575,8 +575,8 @@ func TestScanner_Scan_KeywordOverExtIDPriority(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot"}, // only match copilot
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot"}, // only match copilot
 		},
 	}
 
@@ -605,8 +605,8 @@ func TestScanner_Scan_MultipleExtensions(t *testing.T) {
 		DisplayName:   "Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:  []string{extIDEDir},
-			ExtIDs: []string{"github.copilot", "github.copilot-chat"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot", "github.copilot-chat"},
 		},
 	}
 
@@ -631,8 +631,8 @@ func TestScanner_Scan_EmptyExtensionsDir(t *testing.T) {
 		DisplayName:   "Test Agent",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:    []string{extIDEDir},
-			Keywords: []string{"ai"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Keywords:  []string{"ai"},
 		},
 	}
 
@@ -658,8 +658,8 @@ func TestScanner_Scan_DirWithNoPackageJSON(t *testing.T) {
 		DisplayName:   "Test Agent",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			Paths:    []string{extIDEDir},
-			Keywords: []string{"ai"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			Keywords:  []string{"ai"},
 		},
 	}
 
@@ -672,37 +672,32 @@ func TestScanner_Scan_DirWithNoPackageJSON(t *testing.T) {
 	}
 }
 
-func TestScanner_ResolveScanPaths_IDETypeVSCode(t *testing.T) {
+func TestScanner_ResolveScanPaths_ScanPathsVSCode(t *testing.T) {
 	s := NewScanner()
 	ideRule := &model.IDERule{
-		IDEType: "vscode",
+		ScanPaths: []model.IDEScanPath{
+			{Path: "~/.vscode/extensions", Label: "VS Code"},
+		},
 	}
 	paths := s.resolveScanPaths(ideRule)
 	if len(paths) == 0 {
-		t.Fatal("expected non-empty paths for vscode ide_type")
+		t.Fatal("expected non-empty paths for vscode scan_paths")
 	}
 	for _, p := range paths {
-		if !filepath.IsAbs(p) {
-			t.Errorf("path %q is not absolute", p)
+		absPath, _ := config.ExpandPath(p.Path)
+		if !filepath.IsAbs(absPath) {
+			t.Errorf("path %q is not absolute", p.Path)
 		}
 	}
-	foundExt := false
-	for _, p := range paths {
-		if strings.Contains(filepath.ToSlash(p), "extensions") {
-			foundExt = true
-			break
-		}
-	}
-	if !foundExt {
-		t.Errorf("expected at least one path containing 'extensions', got %v", paths)
+	if len(paths) != 1 {
+		t.Fatalf("expected 1 path, got %d", len(paths))
 	}
 }
 
-func TestScanner_ResolveScanPaths_IDETypeWithFallback(t *testing.T) {
+func TestScanner_ResolveScanPaths_CustomPaths(t *testing.T) {
 	s := NewScanner()
 	ideRule := &model.IDERule{
-		IDEType: "vscode",
-		Paths:   []string{"~/my-custom-extensions"},
+		ScanPaths: []model.IDEScanPath{{Path: "~/my-custom-extensions", Label: "Custom"}},
 	}
 	paths := s.resolveScanPaths(ideRule)
 	if len(paths) == 0 {
@@ -710,48 +705,44 @@ func TestScanner_ResolveScanPaths_IDETypeWithFallback(t *testing.T) {
 	}
 	foundCustom := false
 	for _, p := range paths {
-		if strings.Contains(p, "my-custom-extensions") {
+		if strings.Contains(p.Path, "my-custom-extensions") {
 			foundCustom = true
 			break
 		}
 	}
 	if !foundCustom {
-		t.Errorf("expected fallback custom path in results, got %v", paths)
+		t.Errorf("expected custom path in results, got %v", paths)
 	}
 }
 
-func TestScanner_ResolveScanPaths_OnlyExplicitPaths(t *testing.T) {
+func TestScanner_ResolveScanPaths_ExplicitScanPaths(t *testing.T) {
 	s := NewScanner()
 	ideRule := &model.IDERule{
-		Paths: []string{"/tmp/test-extensions"},
+		ScanPaths: []model.IDEScanPath{{Path: "/tmp/test-extensions"}},
 	}
 	paths := s.resolveScanPaths(ideRule)
 	if len(paths) != 1 {
 		t.Fatalf("expected exactly 1 path, got %d: %v", len(paths), paths)
 	}
-	if paths[0] != "/tmp/test-extensions" {
-		t.Errorf("path = %q, want /tmp/test-extensions", paths[0])
+	if paths[0].Path != "/tmp/test-extensions" {
+		t.Errorf("path = %q, want /tmp/test-extensions", paths[0].Path)
 	}
 }
 
-func TestScanner_Scan_WithIDETypeAutoDiscovery(t *testing.T) {
+func TestScanner_Scan_WithScanPaths(t *testing.T) {
 	s := NewScanner()
 	extDir := t.TempDir()
 	extIDEDir := filepath.Join(extDir, ".vscode", "extensions")
 	os.MkdirAll(extIDEDir, 0755)
 	createTestExtension(t, extIDEDir, "github", "copilot", "GitHub Copilot", nil)
 
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", extDir)
-	defer os.Setenv("HOME", origHome)
-
 	rule := model.AgentRule{
 		Name:          "github-copilot",
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			IDEType: "vscode",
-			ExtIDs:  []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: extIDEDir}},
+			ExtIDs:    []string{"github.copilot"},
 		},
 	}
 
@@ -767,24 +758,20 @@ func TestScanner_Scan_WithIDETypeAutoDiscovery(t *testing.T) {
 	}
 }
 
-func TestScanner_Scan_WithIDETypeCursor(t *testing.T) {
+func TestScanner_Scan_WithScanPathsCursor(t *testing.T) {
 	s := NewScanner()
 	extDir := t.TempDir()
 	cursorExtDir := filepath.Join(extDir, ".cursor", "extensions")
 	os.MkdirAll(cursorExtDir, 0755)
 	createTestExtension(t, cursorExtDir, "github", "copilot-chat", "GitHub Copilot Chat", nil)
 
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", extDir)
-	defer os.Setenv("HOME", origHome)
-
 	rule := model.AgentRule{
 		Name:          "cursor-composer",
 		DisplayName:   "Cursor Composer",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			IDEType: "cursor",
-			ExtIDs:  []string{"github.copilot-chat"},
+			ScanPaths: []model.IDEScanPath{{Path: cursorExtDir, Label: "Cursor"}},
+			ExtIDs:    []string{"github.copilot-chat"},
 		},
 	}
 
@@ -800,7 +787,7 @@ func TestScanner_Scan_WithIDETypeCursor(t *testing.T) {
 	}
 }
 
-func TestScanner_Scan_IDETypeFallbackToExplicitPath(t *testing.T) {
+func TestScanner_Scan_ScanPathFallbackExplicitDir(t *testing.T) {
 	s := NewScanner()
 	extDir := t.TempDir()
 	fallbackDir := filepath.Join(extDir, "fallback-ext")
@@ -812,9 +799,8 @@ func TestScanner_Scan_IDETypeFallbackToExplicitPath(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			IDEType: "vscode",
-			Paths:   []string{fallbackDir},
-			ExtIDs:  []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: fallbackDir}},
+			ExtIDs:    []string{"github.copilot"},
 		},
 	}
 
@@ -827,38 +813,23 @@ func TestScanner_Scan_IDETypeFallbackToExplicitPath(t *testing.T) {
 	}
 }
 
-func TestScanner_ResolveScanPaths_UnknownIDEType(t *testing.T) {
+func TestScanner_ResolveScanPaths_WindsurfScanPaths(t *testing.T) {
 	s := NewScanner()
 	ideRule := &model.IDERule{
-		IDEType: "unknown-ide",
-		Paths:   []string{"/tmp/test-extensions"},
-	}
-	paths := s.resolveScanPaths(ideRule)
-	if len(paths) != 1 {
-		t.Fatalf("expected 1 explicit path, got %d: %v", len(paths), paths)
-	}
-	if paths[0] != "/tmp/test-extensions" {
-		t.Errorf("path = %q, want /tmp/test-extensions", paths[0])
-	}
-}
-
-func TestScanner_ResolveScanPaths_IDETypeWindsurf(t *testing.T) {
-	s := NewScanner()
-	ideRule := &model.IDERule{
-		IDEType: "windsurf",
+		ScanPaths: []model.IDEScanPath{
+			{Path: "~/.windsurf/extensions", Label: "Windsurf"},
+		},
 	}
 	paths := s.resolveScanPaths(ideRule)
 	if len(paths) != 1 {
 		t.Fatalf("expected 1 windsurf path, got %d: %v", len(paths), paths)
 	}
-	home, _ := os.UserHomeDir()
-	expected := filepath.Join(home, ".windsurf", "extensions")
-	if paths[0] != expected {
-		t.Errorf("path = %q, want %q", paths[0], expected)
+	if paths[0].Path != "~/.windsurf/extensions" {
+		t.Errorf("path = %q, want ~/.windsurf/extensions", paths[0].Path)
 	}
 }
 
-func TestScanner_ResolveScanPaths_NoIDETypeNoPaths(t *testing.T) {
+func TestScanner_ResolveScanPaths_NoScanPaths(t *testing.T) {
 	s := NewScanner()
 	ideRule := &model.IDERule{}
 	paths := s.resolveScanPaths(ideRule)
@@ -867,7 +838,7 @@ func TestScanner_ResolveScanPaths_NoIDETypeNoPaths(t *testing.T) {
 	}
 }
 
-func TestScanner_Scan_IDETypeKeepsPathExpansion(t *testing.T) {
+func TestScanner_Scan_ScanPathExpansion(t *testing.T) {
 	s := NewScanner()
 	extDir := t.TempDir()
 	vscDir := filepath.Join(extDir, ".vscode", "extensions")
@@ -883,9 +854,8 @@ func TestScanner_Scan_IDETypeKeepsPathExpansion(t *testing.T) {
 		DisplayName:   "GitHub Copilot",
 		MinConfidence: "possible",
 		IDE: &model.IDERule{
-			IDEType: "vscode",
-			Paths:   []string{"~/.my-backup-extensions"},
-			ExtIDs:  []string{"github.copilot"},
+			ScanPaths: []model.IDEScanPath{{Path: "~/.my-backup-extensions"}},
+			ExtIDs:    []string{"github.copilot"},
 		},
 	}
 
@@ -893,22 +863,26 @@ func TestScanner_Scan_IDETypeKeepsPathExpansion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result from auto-discovered VSCode path, got %d", len(results))
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results (non-existent backup dir), got %d", len(results))
 	}
 }
 
 func TestScanner_ResolveConfigPaths_ExpandPathCalled(t *testing.T) {
 	s := NewScanner()
-	paths := s.resolveScanPaths(&model.IDERule{IDEType: "vscode"})
+	paths := s.resolveScanPaths(&model.IDERule{
+		ScanPaths: []model.IDEScanPath{
+			{Path: "~/.vscode/extensions", Label: "VS Code"},
+		},
+	})
 	for _, p := range paths {
-		expanded, err := config.ExpandPath(p)
+		expanded, err := config.ExpandPath(p.Path)
 		if err != nil {
-			t.Errorf("ExpandPath(%q) error: %v", p, err)
+			t.Errorf("ExpandPath(%q) error: %v", p.Path, err)
 			continue
 		}
 		if !filepath.IsAbs(expanded) {
-			t.Errorf("ExpandPath(%q) = %q, not absolute", p, expanded)
+			t.Errorf("ExpandPath(%q) = %q, not absolute", p.Path, expanded)
 		}
 	}
 }

@@ -156,9 +156,9 @@ func TestRealRules_IDERuleStructure(t *testing.T) {
 		}
 		t.Run(agent.Name, func(t *testing.T) {
 			ide := agent.IDE
-			// ide_type is a valid alternative to explicit paths
-			if len(ide.Paths) == 0 && ide.IDEType == "" {
-				t.Error("IDE rule has no paths and no ide_type")
+			// Must have scan_paths
+			if len(ide.ScanPaths) == 0 {
+				t.Error("IDE rule has no scan_paths")
 			}
 			if len(ide.ExtIDs) == 0 && len(ide.Keywords) == 0 {
 				t.Error("IDE rule has neither ext_ids nor keywords")

@@ -105,7 +105,7 @@ echo "============================================"
 echo ""
 echo "=== Building Images ==="
 
-for nm in cli-agents desktop-assistants browser-agents agent-platforms ide-extensions llm-sdk multi-agent; do
+for nm in cli-agents desktop-assistants browser-agents agent-platforms ide-extensions llm-sdk multi-agent google-agents; do
   printf "${YELLOW}[BUILD]${NC} %s ... " "$nm"
   # Use cache if image already exists
   if docker build --network=host -q -f "$SCRIPT_DIR/dockerfiles/Dockerfile.${nm}" -t "ai-discovery-test/${nm}:latest" "$PROJECT_DIR" > /dev/null 2>&1; then
@@ -142,7 +142,7 @@ run_test "agent-platforms" "ai-discovery-test/agent-platforms:latest" \
 
 # 5. IDE Extensions (12+ VS Code extensions — real package.json files, no process)
 run_test "ide-extensions" "ai-discovery-test/ide-extensions:latest" \
-  "github-copilot,github-copilot-agent,cline,continue,roo-code,augment,amazon-q-developer,tabnine,sourcegraph-cody,lingma,trae,codebuddy,qoder" \
+  "github-copilot,github-copilot-agent,cline,continue,roo-code,augment,amazon-q-developer,tabnine,sourcegraph-cody,lingma,trae,codebuddy,qoder,gemini-code-assist" \
   "code:--extensions-dir"
 
 # 6. LLM SDK (real pip + npm packages + process sim)
@@ -155,13 +155,18 @@ run_test "multi-agent" "ai-discovery-test/multi-agent:latest" \
   "aider,claude-code,hermes-agent,opencode,reasonix,kiro,omp,grok-cli,open-interpreter,llm-sdk-detected,langchain,autogen,crewai,github-copilot,cline,tabnine,codebuddy,qoder" \
   "aider,claude,hermes,opencode,reasonix,kiro-cli,omp,grok,interpreter,real:k1='langchain';k2='autogen';k3='crewai',code:--extensions-dir"
 
+# 8. Google AI Agents (Antigravity + Gemini Code Assist + ADK + Mariner + NotebookLM)
+run_test "google-agents" "ai-discovery-test/google-agents:latest" \
+  "google-antigravity,google-antigravity-ide,gemini-code-assist,google-adk,google-project-mariner,google-notebooklm" \
+  "antigravity,antigravity-cli,adk,mariner,notebooklm,code:--extensions-dir"
+
 # ── Summary ────────────────────────────────────────────────────
 echo ""
 echo "============================================"
 echo " SUMMARY"
 echo "============================================"
 printf "Passed: ${GREEN}%d${NC}  Failed: ${RED}%d${NC}\n" $PASSED $FAILED
-for nm in cli-agents desktop-assistants browser-agents agent-platforms ide-extensions llm-sdk multi-agent; do
+for nm in cli-agents desktop-assistants browser-agents agent-platforms ide-extensions llm-sdk multi-agent google-agents; do
   s="${TEST_RESULTS[$nm]:-SKIP}"
   if [ "$s" = "PASS" ]; then
     printf "  ${GREEN}✓${NC} %s\n" "$nm"

@@ -7,105 +7,6 @@ import (
 	"testing"
 )
 
-func TestExtensionsDirs_VSCode(t *testing.T) {
-	dirs := ExtensionsDirs(IDEVSCode)
-	if len(dirs) == 0 {
-		t.Fatal("expected non-empty VSCode dirs")
-	}
-	home, _ := os.UserHomeDir()
-	for _, d := range dirs {
-		if !filepath.IsAbs(d) {
-			t.Errorf("path %q is not absolute", d)
-		}
-		if filepath.Base(d) != "extensions" && !stringsContain(d, "extensions") {
-			// Acceptable on Windows where the path may not end in extensions/
-		}
-		if !stringsHasPrefix(d, home) {
-			t.Errorf("path %q does not start with home %q", d, home)
-		}
-	}
-}
-
-func TestExtensionsDirs_VSCode_Windows(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("windows-specific test")
-	}
-	dirs := ExtensionsDirs(IDEVSCode)
-	// At least one dir should exist on Windows
-	foundExtensions := false
-	for _, d := range dirs {
-		if pathEndsWithExtensions(d) {
-			foundExtensions = true
-			break
-		}
-	}
-	if !foundExtensions {
-		t.Logf("VSCode dirs on Windows: %v", dirs)
-	}
-}
-
-func TestExtensionsDirs_VSCode_NonWindows(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("non-windows test")
-	}
-	dirs := ExtensionsDirs(IDEVSCode)
-	// All non-windows paths should end with extensions/
-	for _, d := range dirs {
-		if filepath.Base(d) != "extensions" {
-			t.Errorf("expected path ending in extensions/, got %q", d)
-		}
-	}
-}
-
-func TestExtensionsDirs_Cursor(t *testing.T) {
-	dirs := ExtensionsDirs(IDECursor)
-	home, _ := os.UserHomeDir()
-	expected := filepath.Join(home, ".cursor", "extensions")
-	found := false
-	for _, d := range dirs {
-		if d == expected {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("cursor dirs = %v, must contain %q", dirs, expected)
-	}
-	for _, d := range dirs {
-		if !filepath.IsAbs(d) {
-			t.Errorf("cursor path %q is not absolute", d)
-		}
-	}
-}
-
-func TestExtensionsDirs_Windsurf(t *testing.T) {
-	dirs := ExtensionsDirs(IDEWindsurf)
-	home, _ := os.UserHomeDir()
-	expected := filepath.Join(home, ".windsurf", "extensions")
-	found := false
-	for _, d := range dirs {
-		if d == expected {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("windsurf dirs = %v, must contain %q", dirs, expected)
-	}
-	for _, d := range dirs {
-		if !filepath.IsAbs(d) {
-			t.Errorf("windsurf path %q is not absolute", d)
-		}
-	}
-}
-
-func TestExtensionsDirs_UnknownIDE(t *testing.T) {
-	dirs := ExtensionsDirs(IDE("unknown"))
-	if len(dirs) != 0 {
-		t.Errorf("expected empty dirs for unknown IDE, got %v", dirs)
-	}
-}
-
 func stringsHasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
@@ -117,27 +18,6 @@ func stringsContain(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-func pathEndsWithExtensions(p string) bool {
-	base := filepath.ToSlash(filepath.Clean(p))
-	return filepath.Base(p) == "extensions" ||
-		len(base) >= 11 && base[len(base)-11:] == "/extensions"
-}
-
-// Test that the platform paths are reasonable for the current OS
-func TestExtensionsDirs_Exist(t *testing.T) {
-	// This is a sanity test — the directories may or may not exist
-	// on the machine running tests. We just verify the function
-	// returns sensible absolute paths.
-	for _, ide := range []IDE{IDEVSCode, IDECursor, IDEWindsurf} {
-		dirs := ExtensionsDirs(ide)
-		for _, d := range dirs {
-			if !filepath.IsAbs(d) {
-				t.Errorf("%s: path %q is not absolute", ide, d)
-			}
-		}
-	}
 }
 
 func TestAppConfigDir(t *testing.T) {

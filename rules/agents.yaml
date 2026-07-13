@@ -11,6 +11,16 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.cursor/extensions/GitHub.copilot*
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.windsurf/extensions"
+          label: "Windsurf"
     features:
       extensions:
         - "GitHub.copilot"
@@ -27,6 +37,16 @@ agents:
     paths:
       - path: ~/.cursor/extensions/GitHub.copilot-chat*
       - path: ~/.vscode/extensions/GitHub.copilot-chat*
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.windsurf/extensions"
+          label: "Windsurf"
     features:
       extensions:
         - "GitHub.copilot-chat"
@@ -45,6 +65,14 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.cline
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "saoudrizwan.claude-dev"
@@ -63,6 +91,14 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.continue
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "Continue.continue"
@@ -81,6 +117,14 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.roo-code
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "rooveterinaryinc.roo-cline"
@@ -97,6 +141,14 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.augment
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "augment.vscode-augment"
@@ -112,6 +164,23 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.aws/q
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.local/share"
+          label: "JetBrains (Linux)"
+          os: linux
+        - path: "~/Library/Application Support"
+          label: "JetBrains (macOS)"
+          os: darwin
+        - path: "%APPDATA%"
+          label: "JetBrains (Windows)"
+          os: windows
     features:
       extensions:
         - "amazonwebservices.amazon-q-vscode"
@@ -129,6 +198,23 @@ agents:
       - path: ~/.tabnine
       - path: "%APPDATA%/TabNine"
         os: windows
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.local/share"
+          label: "JetBrains (Linux)"
+          os: linux
+        - path: "~/Library/Application Support"
+          label: "JetBrains (macOS)"
+          os: darwin
+        - path: "%APPDATA%"
+          label: "JetBrains (Windows)"
+          os: windows
     features:
       extensions:
         - "TabNine.tabnine-vscode"
@@ -144,6 +230,23 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.sourcegraph
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.local/share"
+          label: "JetBrains (Linux)"
+          os: linux
+        - path: "~/Library/Application Support"
+          label: "JetBrains (macOS)"
+          os: darwin
+        - path: "%APPDATA%"
+          label: "JetBrains (Windows)"
+          os: windows
     features:
       extensions:
         - "sourcegraph.cody-ai"
@@ -157,6 +260,14 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.codebuddy
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "tencent.codebuddy"
@@ -170,6 +281,14 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.qoder
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "alibaba.qoder"
@@ -187,6 +306,23 @@ agents:
       - path: ~/.lingma
       - path: "%APPDATA%/Lingma"
         os: windows
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.local/share"
+          label: "JetBrains (Linux)"
+          os: linux
+        - path: "~/Library/Application Support"
+          label: "JetBrains (macOS)"
+          os: darwin
+        - path: "%APPDATA%"
+          label: "JetBrains (Windows)"
+          os: windows
     features:
       extensions:
         - "alibaba.tongyi-lingma"
@@ -200,6 +336,12 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.trae
+    ide:
+      scan_paths:
+        - path: "~/.trae/extensions"
+          label: "Trae"
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
     features:
       extensions:
         - "bytedance.trae"
@@ -654,6 +796,12 @@ agents:
         os: darwin
       - path: "%APPDATA%/Cursor"
         os: windows
+    ide:
+      scan_paths:
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
     features:
       processes:
         - cursor
@@ -667,6 +815,10 @@ agents:
     description: "Cursor IDE Composer Agent (agent mode enabled)"
     category: "ide_extension"
     min_confidence: possible
+    ide:
+      scan_paths:
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
     features:
       extensions:
         - "cursor"
@@ -687,6 +839,15 @@ agents:
       - path: ~/.windsurf
       - path: "%APPDATA%/Windsurf"
         os: windows
+    ide:
+      scan_paths:
+        - path: "~/.windsurf/extensions"
+          label: "Windsurf"
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+      keywords:
+        - "windsurf"
+        - "codeium"
     features:
       processes:
         - windsurf
@@ -1119,5 +1280,212 @@ agents:
     features:
       processes:
         - yuanqi
+    skills:
+      enabled: true
+
+  # ============================================================
+  # Google AI Agents
+  # ============================================================
+
+  - name: gemini-code-assist
+    display_name: "Gemini Code Assist"
+    description: "Google Gemini Code Assist (formerly Duet AI) — AI coding assistant for VS Code and JetBrains"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.gemini-code-assist
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+        - path: "~/.vscode-oss/extensions"
+          label: "VS Code OSS"
+        - path: "~/.cursor/extensions"
+          label: "Cursor"
+        - path: "~/.local/share"
+          label: "JetBrains (Linux)"
+          os: linux
+        - path: "~/Library/Application Support"
+          label: "JetBrains (macOS)"
+          os: darwin
+        - path: "%APPDATA%"
+          label: "JetBrains (Windows)"
+          os: windows
+    features:
+      extensions:
+        - "Google.geminicodeassist"
+        - "google.geminicodeassist"
+      agent_signals:
+        - "agent"
+        - "createAgent"
+        - "tool_use"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.gemini-code-assist/skills
+
+  - name: gemini-code-assist-jetbrains
+    display_name: "Gemini Code Assist (JetBrains)"
+    description: "Google Gemini Code Assist plugin for IntelliJ / PyCharm / GoLand / WebStorm"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.local/share/JetBrains
+        os: linux
+      - path: ~/Library/Application Support/JetBrains
+        os: darwin
+      - path: "%APPDATA%/JetBrains"
+        os: windows
+    ide:
+      scan_paths:
+        - path: "~/.local/share"
+          label: "JetBrains (Linux)"
+          os: linux
+        - path: "~/Library/Application Support"
+          label: "JetBrains (macOS)"
+          os: darwin
+        - path: "%APPDATA%"
+          label: "JetBrains (Windows)"
+          os: windows
+      keywords:
+        - "gemini"
+        - "code assist"
+    features:
+      processes:
+        - gemini-code-assist
+      agent_signals:
+        - "agent"
+        - "gemini"
+    skills:
+      enabled: true
+
+  - name: google-antigravity
+    display_name: "Google Antigravity"
+    description: "Google Antigravity — next-gen agentic development platform (IDE + CLI + SDK)"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.antigravity
+      - path: ~/Library/Application Support/Antigravity
+        os: darwin
+      - path: "%APPDATA%/Antigravity"
+        os: windows
+    features:
+      processes:
+        - antigravity
+        - antigravity-cli
+      binaries:
+        - antigravity
+      packages:
+        - "@google/antigravity-cli"
+      version_regex: "antigravity.*v?([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: antigravity
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    config:
+      format: json
+      paths:
+        - ~/.antigravity/config.json
+        - ~/Library/Application Support/Antigravity/config.json
+        - "%APPDATA%/Antigravity/config.json"
+      field_map:
+        model: "model"
+        project: "project"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.antigravity/skills
+
+  - name: google-antigravity-ide
+    display_name: "Google Antigravity IDE"
+    description: "Google Antigravity — fully-featured agentic IDE"
+    category: "ide_extension"
+    min_confidence: possible
+    paths:
+      - path: ~/.antigravity/ide
+      - path: ~/Library/Application Support/Antigravity
+        os: darwin
+      - path: "%APPDATA%/Antigravity"
+        os: windows
+    ide:
+      scan_paths:
+        - path: "~/.antigravity/extensions"
+          label: "Antigravity"
+    features:
+      processes:
+        - antigravity-ide
+      extensions:
+        - "google.antigravity"
+      agent_signals:
+        - "agent"
+        - "createAgent"
+        - "skills"
+        - "subagents"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.antigravity/skills
+
+  - name: google-adk
+    display_name: "Google ADK"
+    description: "Google Agent Development Kit — open-source Python framework for building AI agents"
+    category: "agent_framework"
+    min_confidence: ghost
+    paths:
+      - path: ~/.agents/skills
+    features:
+      processes:
+        - adk
+      binaries:
+        - adk
+      packages:
+        - google-adk
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: adk
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.agents/skills
+        - .agents/skills
+
+  - name: google-project-mariner
+    display_name: "Project Mariner"
+    description: "Google DeepMind browser AI agent based on Chrome"
+    category: "browser_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.mariner
+      - path: "%APPDATA%/Mariner"
+        os: windows
+    features:
+      processes:
+        - mariner
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.mariner/skills
+
+  - name: google-notebooklm
+    display_name: "NotebookLM"
+    description: "Google AI notebook assistant"
+    category: "desktop_app"
+    min_confidence: possible
+    paths:
+      - path: ~/.config/notebooklm
+        os: linux
+      - path: ~/Library/Application Support/NotebookLM
+        os: darwin
+      - path: "%APPDATA%/NotebookLM"
+        os: windows
+    features:
+      processes:
+        - notebooklm
+        - NotebookLM
     skills:
       enabled: true

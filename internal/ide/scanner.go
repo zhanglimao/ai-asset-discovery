@@ -49,36 +49,32 @@ func (s *Scanner) Scan(rules []model.AgentRule) ([]model.DiscoveredAgent, error)
 	return results, nil
 }
 
-// resolveScanPaths returns the list of extension directories to scan.
-// When ide_type is set, it first tries platform-specific auto-discovery
-// (e.g. %USERPROFILE%\.vscode\extensions on Windows), then falls back
-// to the explicit Paths list. When ide_type is empty, only explicit
-// Paths are used.
-func (s *Scanner) resolveScanPaths(ideRule *model.IDERule) []string {
-	var paths []string
-
-	if ideRule.IDEType != "" {
-		ide := platform.IDE(ideRule.IDEType)
-		autoDirs := platform.ExtensionsDirs(ide)
-		paths = append(paths, autoDirs...)
+// resolveScanPaths builds the list of extension-scan root directories from
+// a rule. Only ScanPaths entries are used (no hardcoded platform presets).
+func (s *Scanner) resolveScanPaths(ideRule *model.IDERule) []model.IDEScanPath {
+	var out []model.IDEScanPath
+	for _, sp := range ideRule.ScanPaths {
+		if sp.Path != "" {
+			out = append(out, sp)
+		}
 	}
-
-	// Also append explicit paths as fallback
-	paths = append(paths, ideRule.Paths...)
-
-	return paths
+	return out
 }
 
 func (s *Scanner) scanIDERule(rule model.AgentRule) []model.DiscoveredAgent {
 	var results []model.DiscoveredAgent
 	ideRule := rule.IDE
 
-	// Resolve scan paths: auto-discovery via ide_type first,
-	// then fall back to explicit rule paths.
+	// Resolve scan paths: rule-driven IDEScanPath entries
 	scanPaths := s.resolveScanPaths(ideRule)
 
-	for _, basePath := range scanPaths {
-		expandedPath, err := config.ExpandPath(basePath)
+	for _, sp := range scanPaths {
+		// Skip OS-scoped paths that don't match the current platform.
+		if sp.OS != "" && !strings.EqualFold(sp.OS, platform.CurrentOS()) {
+			continue
+		}
+
+		expandedPath, err := config.ExpandPath(sp.Path)
 		if err != nil {
 			continue
 		}

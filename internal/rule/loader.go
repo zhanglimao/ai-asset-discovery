@@ -147,12 +147,12 @@ func (l *Loader) normalizeFeatures(rule *model.AgentRule) {
 	}
 
 	// ── IDE extension detection ──
+	// Features extensions / agent_signals are merged into the rule's IDE
+	// section. If no IDE section exists yet we create one; the rule MUST
+	// supply scan_paths to tell the scanner where to look.
 	if len(f.Extensions) > 0 || len(f.AgentSignals) > 0 {
 		if rule.IDE == nil {
-			rule.IDE = &model.IDERule{
-				IDEType: "vscode",
-				Paths:   []string{"~/.cursor/extensions"},
-			}
+			rule.IDE = &model.IDERule{}
 		}
 		rule.IDE.ExtIDs = append(rule.IDE.ExtIDs, f.Extensions...)
 		rule.IDE.AgentSignals = append(rule.IDE.AgentSignals, f.AgentSignals...)

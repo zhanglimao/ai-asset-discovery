@@ -90,4 +90,12 @@ RUN mkdir -p /root/.vscode/extensions/alibaba.qoder-1.0.0
 RUN echo '{"name":"qoder","publisher":"alibaba","displayName":"Qoder","version":"1.0.0","description":"Alibaba intelligent coding platform","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["qoder","alibaba","agent"]}' > /root/.vscode/extensions/alibaba.qoder-1.0.0/package.json
 RUN mkdir -p /root/.qoder/skills
 
+# =========================================================================
+# Gemini Code Assist (Google)
+# =========================================================================
+RUN mkdir -p /root/.vscode/extensions/google.geminicodeassist-2.15.0
+RUN echo '{"name":"geminicodeassist","publisher":"google","displayName":"Gemini Code Assist","version":"2.15.0","description":"Google Gemini Code Assist — AI coding assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["google","gemini","code","assist","agent","ai"],"activationEvents":["onAgent:gemini","onCommand:geminicodeassist.startChat"],"main":"./dist/agent/extension.js","contributes":{"commands":[{"command":"geminicodeassist.startChat","title":"Gemini Code Assist: Start Chat"},{"command":"geminicodeassist.createAgent","title":"Gemini Code Assist: Create Agent"}],"agent":{"id":"gemini-agent","name":"Gemini Code Assist Agent"}}}' > /root/.vscode/extensions/google.geminicodeassist-2.15.0/package.json
+RUN mkdir -p /root/.vscode/extensions/google.geminicodeassist-2.15.0/dist/agent && echo '// Agent entry' > /root/.vscode/extensions/google.geminicodeassist-2.15.0/dist/agent/extension.js
+RUN mkdir -p /root/.gemini-code-assist/skills
+
 CMD ["sleep", "infinity"]

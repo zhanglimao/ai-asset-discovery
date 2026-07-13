@@ -219,9 +219,9 @@ func TestAgentsYAML_IDERules(t *testing.T) {
 		}
 		ide := agent.IDE
 
-		// ide_type is a valid alternative to explicit paths
-		if len(ide.Paths) == 0 && ide.IDEType == "" {
-			t.Errorf("agent %q: IDE rule has no paths and no ide_type", agent.Name)
+		// Must have scan_paths
+		if len(ide.ScanPaths) == 0 {
+			t.Errorf("agent %q: IDE rule has no scan_paths", agent.Name)
 		}
 
 		// Must have either ext_ids or keywords for matching

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// ExpandPath expands path variables like ~/ and %APPDATA%.
+// ExpandPath expands path variables like ~/, %VAR%, and {{VAR}}.
 func ExpandPath(path string) (string, error) {
 	// Handle ~/
 	if strings.HasPrefix(path, "~/") {
@@ -20,12 +20,44 @@ func ExpandPath(path string) (string, error) {
 		path = filepath.Join(home, path[2:])
 	}
 
+	// Expand {{VAR}} placeholders (used by platform ScanPath presets)
+	path = expandDoubleBraces(path)
+
 	// Handle %VAR% style (Windows-like) on all platforms
 	if strings.Contains(path, "%") {
 		path = expandEnvVars(path)
 	}
 
 	return filepath.Clean(path), nil
+}
+
+var doubleBraceResolvers = map[string]func() (string, error){
+	"AppData": func() (string, error) {
+		v := os.Getenv("APPDATA")
+		if v == "" && runtime.GOOS == "windows" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			v = filepath.Join(home, "AppData", "Roaming")
+		}
+		return v, nil
+	},
+}
+
+func expandDoubleBraces(s string) string {
+	for k, f := range doubleBraceResolvers {
+		pat := "{{" + k + "}}"
+		if !strings.Contains(s, pat) {
+			continue
+		}
+		v, err := f()
+		if err != nil {
+			continue
+		}
+		s = strings.ReplaceAll(s, pat, v)
+	}
+	return s
 }
 
 func expandEnvVars(path string) string {

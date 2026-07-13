@@ -1,0 +1,53 @@
+FROM ubuntu:22.04
+
+# ============================================================================
+# Google AI Agents — Antigravity + Gemini Code Assist + ADK + Project Mariner
+# ============================================================================
+
+ENV PATH=/opt/agents/bin:/usr/local/bin:/usr/bin:/bin
+
+RUN apt-get update && apt-get install -y curl wget python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /opt/agents/bin
+
+# ── Google Antigravity (simulated) ──────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "antigravity v2.0.1"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/antigravity && \
+    chmod +x /opt/agents/bin/antigravity
+RUN ln -f /bin/sleep /usr/local/bin/antigravity && \
+    ln -f /bin/sleep /usr/local/bin/antigravity-cli && \
+    mkdir -p /root/.antigravity /root/.antigravity/skills/code-review
+RUN echo '{"model":"gemini-2.5-pro","project":"antigravity-test"}' > /root/.antigravity/config.json && \
+    echo '---' > /root/.antigravity/skills/code-review/skill.md && \
+    echo 'name: antigravity-code-review' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo 'description: Review code using Antigravity AI' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo 'version: "1.0"' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo 'tools:' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo '  - read_file' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo '  - search_code' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo 'prompt: "Review the code for issues..."' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo '---' >> /root/.antigravity/skills/code-review/skill.md && \
+    echo '# Antigravity Code Review' >> /root/.antigravity/skills/code-review/skill.md
+
+# ── Gemini Code Assist (VS Code extension) ────────────────────
+RUN mkdir -p /root/.vscode/extensions/google.geminicodeassist-2.15.0
+RUN echo '{"name":"geminicodeassist","publisher":"google","displayName":"Gemini Code Assist","version":"2.15.0","description":"Google Gemini Code Assist — AI coding assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning","Other"],"keywords":["google","gemini","code","assist","agent","ai"],"activationEvents":["onAgent:gemini","onCommand:geminicodeassist.startChat"],"main":"./dist/agent/extension.js","contributes":{"commands":[{"command":"geminicodeassist.startChat","title":"Gemini Code Assist: Start Chat"},{"command":"geminicodeassist.createAgent","title":"Gemini Code Assist: Create Agent"}],"agent":{"id":"gemini-agent","name":"Gemini Code Assist Agent"}}}' > /root/.vscode/extensions/google.geminicodeassist-2.15.0/package.json
+RUN mkdir -p /root/.vscode/extensions/google.geminicodeassist-2.15.0/dist/agent && \
+    echo '// Agent entry' > /root/.vscode/extensions/google.geminicodeassist-2.15.0/dist/agent/extension.js && \
+    mkdir -p /root/.gemini-code-assist/skills
+
+# ── Google ADK (simulated pip package) ──────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "adk v2.4.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/adk && \
+    chmod +x /opt/agents/bin/adk
+RUN ln -f /bin/sleep /usr/local/bin/adk && \
+    mkdir -p /root/.agents/skills/code-review
+
+# ── Project Mariner (simulated browser agent) ──────────────────
+RUN ln -f /bin/sleep /usr/local/bin/mariner && \
+    mkdir -p /root/.mariner/skills/web-automation
+
+# ── NotebookLM ─────────────────────────────────────────────────
+RUN ln -f /bin/sleep /usr/local/bin/notebooklm && \
+    mkdir -p /root/.config/notebooklm
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

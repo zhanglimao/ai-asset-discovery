@@ -142,13 +142,33 @@ type FileRule struct {
 
 // IDERule detects AI extensions in IDEs.
 type IDERule struct {
-	IDEType      string          `yaml:"ide_type,omitempty" json:"ide_type,omitempty"`
-	Paths        []string        `yaml:"paths,omitempty" json:"paths,omitempty"`
+	// ScanPaths defines where to look for extensions, per platform.
+	// Each entry specifies a scan_root directory that contains
+	// extension folders (e.g. ~/.vscode/extensions).
+	// When specified, scanner reads ext manifest (package.json) from
+	// each subdirectory and matches against ExtIDs / AgentSignals.
+	ScanPaths []IDEScanPath `yaml:"scan_paths,omitempty" json:"scan_paths,omitempty"`
+
+	// ── Matching criteria ──
 	ExtIDs       []string        `yaml:"ext_ids,omitempty" json:"ext_ids,omitempty"`
 	Keywords     []string        `yaml:"keywords,omitempty" json:"keywords,omitempty"`
 	Depends      []string        `yaml:"depends,omitempty" json:"depends,omitempty"`
 	AgentSignals []string        `yaml:"agent_signals,omitempty" json:"agent_signals,omitempty"`
 	ConfigKeys   []ConfigExtract `yaml:"config_keys,omitempty" json:"config_keys,omitempty"`
+}
+
+// IDEScanPath describes one extension-scan root directory, optionally
+// scoped to a specific operating system.
+type IDEScanPath struct {
+	// Path to the directory containing extension subdirectories.
+	// Supports ~ and %VAR% expansion.
+	Path string `yaml:"path" json:"path"`
+
+	// Human-readable label for this IDE variant (e.g. "VS Code", "Cursor", "IntelliJ").
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
+
+	// OS filter: linux, darwin, windows, or empty for all.
+	OS string `yaml:"os,omitempty" json:"os,omitempty"`
 }
 
 // ConfigRule defines how to extract configuration.

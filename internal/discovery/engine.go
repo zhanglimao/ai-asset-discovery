@@ -183,10 +183,12 @@ func (e *Engine) Run() (*Result, error) {
 			// ghost entry anchored by skill discovery
 			if !found && len(skills) > 0 {
 				agent := model.DiscoveredAgent{
-					Name:      r.Name,
-					AssetType: model.AssetTypeFile, // skill files are file-system evidence
-					Skills:    skills,
-					SkillDir:  skillDir,
+					Name:        r.Name,
+					DisplayName: r.DisplayName,
+					Confidence:  model.Confidence(r.MinConfidence),
+					AssetType:   model.AssetTypeFile, // skill files are file-system evidence
+					Skills:      skills,
+					SkillDir:    skillDir,
 				}
 				result.Agents = append(result.Agents, agent)
 			}
