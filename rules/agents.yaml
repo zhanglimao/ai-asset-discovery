@@ -49,17 +49,11 @@ agents:
       enabled: true
       scan_paths:
         - ~/.cline/skills
-      extensions:
-        - ".md"
-        - ".yaml"
-        - ".yml"
-        - ".json"
       keywords:
         - skill
         - description
         - tool
         - prompt
-      auto_discover: true
 
   - name: continue
     display_name: "Continue"
@@ -78,16 +72,11 @@ agents:
       enabled: true
       scan_paths:
         - ~/.continue/agents
-      extensions:
-        - ".md"
-        - ".yaml"
-        - ".json"
       keywords:
         - agent
         - skill
         - description
         - tool
-      auto_discover: true
 
   - name: roo-code
     display_name: "Roo Code"
@@ -254,16 +243,11 @@ agents:
       scan_paths:
         - ~/.claude/skills
         - ~/.claude-code/skills
-      extensions:
-        - ".md"
-        - ".yaml"
-        - ".yml"
       keywords:
         - skill
         - description
         - tool
         - prompt
-      auto_discover: true
 
   - name: openclaw
     display_name: "OpenClaw"
@@ -280,17 +264,11 @@ agents:
       scan_paths:
         - ~/.openclaw/skills
         - ~/.openclaw/tools
-      extensions:
-        - ".md"
-        - ".yaml"
-        - ".yml"
-        - ".json"
       keywords:
         - skill
         - description
         - tool
         - prompt
-      auto_discover: true
 
   - name: gemini-cli
     display_name: "Gemini CLI"
@@ -316,15 +294,10 @@ agents:
       enabled: true
       scan_paths:
         - ~/.gemini/skills
-      extensions:
-        - ".md"
-        - ".yaml"
-        - ".yml"
       keywords:
         - skill
         - description
         - tool
-      auto_discover: true
 
   - name: devin
     display_name: "Devin"
@@ -416,10 +389,6 @@ agents:
         - ~/Library/Application Support/Claude/skills
         - ~/.config/Claude/skills
         - "%APPDATA%/Claude/skills"
-      extensions:
-        - ".md"
-        - ".yaml"
-        - ".yml"
       keywords:
         - skill
         - description
@@ -735,6 +704,7 @@ agents:
       packages:
         - autogen
         - pyautogen
+        - autogen-agentchat
 
   - name: crewai
     display_name: "CrewAI"

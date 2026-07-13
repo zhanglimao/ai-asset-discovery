@@ -114,8 +114,8 @@ run_test "llm-sdk"        "ai-discovery-test/llm-sdk:latest"        "llm-sdk-det
 run_test "ide-extensions" "ai-discovery-test/ide-extensions:latest" "github-copilot,cline,continue,amazon-q-developer,tabnine,sourcegraph-cody,roo-code,augment,trae,lingma,codebuddy,qoder" "code:--extensions-dir"
 
 # ── Desktop & Personal Assistants ──────────────────────────────
-# All 32 agents as hardlinks → comm/cmdline both match correctly
-run_test "desktop-apps"   "ai-discovery-test/desktop-apps:latest"   "windsurf,chatgpt-desktop,claude-desktop,workbuddy,marvis,qclaw,qoderwork,trae-work,doubao-pro,kimi-work,dumate,jieyue-ai,autoclaw,lobsterai,cola,alice,niuma-ai,manus,fellou,genspark,autoglm,dify,coze,qwen-code,openhands,goose,warp,devin,codex-cli,tabnine,dingtalk-ai,tencent-yuanqi" "windsurf,chatgpt-desktop,Claude,WorkBuddy,Marvis,Qclaw,QoderWork,TRAE,doubao,Kimi,DuMate,jieyue,AutoClaw,lobster,Cola,Alice,niuma,Manus,Fellou,Genspark,AutoGLM,dify,coze,qwen,openhands,goose,warp,devin,codex,tabnine,dingtalk,yuanqi"
+# All 34 agents as hardlinks → comm/cmdline both match correctly
+run_test "desktop-apps"   "ai-discovery-test/desktop-apps:latest"   "windsurf,chatgpt-desktop,claude-desktop,workbuddy,marvis,qclaw,qoderwork,trae-work,doubao-pro,kimi-work,dumate,jieyue-ai,autoclaw,lobsterai,cola,alice,niuma-ai,manus,fellou,genspark,autoglm,dify,coze,qwen-code,openhands,goose,warp,devin,codex-cli,tabnine,dingtalk-ai,tencent-yuanqi,claude-computer-use,bolt-new,replit-agent" "windsurf,chatgpt-desktop,Claude,WorkBuddy,Marvis,Qclaw,QoderWork,TRAE,doubao,Kimi,DuMate,jieyue,AutoClaw,lobster,Cola,Alice,niuma,Manus,Fellou,Genspark,AutoGLM,dify,coze,qwen,openhands,goose,warp,devin,codex,tabnine,dingtalk,yuanqi,computer-use"
 
 # ── Mixed multi-agent ──────────────────────────────────────────
 run_test "multi-agent"    "ai-discovery-test/multi-agent:latest"    "aider,claude-code,llm-sdk-detected,langchain,autogen,crewai,github-copilot,cline,tabnine,codebuddy,qoder" "aider,claude-code,real:python3:k1='langchain';k2='autogen';k3='crewai',code:--extensions-dir"

@@ -93,7 +93,7 @@ func (d *Discoverer) DiscoverSkillsWithProbe(rule model.AgentRule, fileDirs []st
 	}
 
 	// Phase 2: auto-probe if enabled
-	if sr.AutoDiscover && len(fileDirs) > 0 {
+	if sr.AutoDiscover != nil && *sr.AutoDiscover && len(fileDirs) > 0 {
 		probed := ProbeSkillDirs(fileDirs)
 		for _, probePath := range probed {
 			// Skip already-scanned paths (avoid scanning same dir twice)

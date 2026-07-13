@@ -184,7 +184,9 @@ type SkillRule struct {
 	// AutoDiscover enables automatic probing for skill directories under
 	// file-evidence directories (e.g. ~/.cline → probes ~/.cline/skills,
 	// ~/.cline/tools, ~/.cline/agents, etc.)
-	AutoDiscover bool `yaml:"auto_discover" json:"auto_discover"`
+	// Default: true (enabled automatically when skills.enabled is true).
+	// Set explicitly to false in YAML to disable auto-probing.
+	AutoDiscover *bool `yaml:"auto_discover" json:"auto_discover"`
 }
 
 // RulesFile is the top-level structure of a rules YAML file.

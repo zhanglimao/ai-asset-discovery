@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"fmt"
+	"encoding/json"
 	"os/exec"
 	"strings"
 
@@ -154,32 +154,17 @@ func (ps *PackageScanner) parseNPMList(output string) []pkgInfo {
 }
 
 func (ps *PackageScanner) parsePipList(output string) []pkgInfo {
-	// pip list --format=json returns JSON array
-	// Simple approach: lightweight JSON parse without encoding/json import
-	var pkgs []pkgInfo
-	// Lightweight JSON: look for "name": "xxx", "version": "yyy" patterns
-	lines := strings.Split(output, "\n")
-	var current pkgInfo
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.Contains(line, `"name"`) {
-			current.Name = extractJSONString(line)
-		}
-		if strings.Contains(line, `"version"`) {
-			current.Version = extractJSONString(line)
-			if current.Name != "" && current.Version != "" {
-				pkgs = append(pkgs, current)
-				current = pkgInfo{}
-			}
-		}
+	var raw []struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
 	}
-	// Also handle the text output format: "Package    Version"
-	if len(pkgs) == 0 {
-		for _, line := range lines {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				pkgs = append(pkgs, pkgInfo{Name: parts[0], Version: parts[1]})
-			}
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		return nil
+	}
+	pkgs := make([]pkgInfo, 0, len(raw))
+	for _, r := range raw {
+		if r.Name != "" {
+			pkgs = append(pkgs, pkgInfo{Name: r.Name, Version: r.Version})
 		}
 	}
 	return pkgs
@@ -300,18 +285,3 @@ func (ps *PackageScanner) extractVersion(text, versionRegex string) string {
 	}
 	return ""
 }
-
-func extractJSONString(line string) string {
-	start := strings.Index(line, `"`)
-	if start < 0 {
-		return ""
-	}
-	start++ // skip first quote
-	end := strings.Index(line[start:], `"`)
-	if end < 0 {
-		return ""
-	}
-	return line[start : start+end]
-}
-
-var _ = fmt.Sprintf // keep fmt import

@@ -111,4 +111,13 @@ RUN ln /bin/sleep /usr/local/bin/yuanqi
 # (hardlink name is lowercase "dingtalk" so /proc/PID/comm = "dingtalk")
 RUN ln /bin/sleep /usr/local/bin/dingtalk
 
+# ── Claude Computer Use (browser agent) ───────────────
+RUN ln /bin/sleep /usr/local/bin/computer-use
+
+# ── Bolt.new (web tool, file detection) ────────────────
+RUN mkdir -p /root/.bolt
+
+# ── Replit Agent (web tool, file detection) ────────────
+RUN mkdir -p /root/.replit
+
 CMD ["sleep", "infinity"]

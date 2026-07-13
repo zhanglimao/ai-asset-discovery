@@ -422,11 +422,6 @@ skills:
   scan_paths:                           # 扫描目录
     - ~/.cline/skills
     - ~/.claude-code/skills
-  extensions:                           # 允许的文件扩展名
-    - ".md"
-    - ".yaml"
-    - ".yml"
-    - ".json"
   keywords:                             # 必需包含的关键词（至少一个）
     - skill
     - description
@@ -435,12 +430,12 @@ skills:
   max_depth: 3                          # 扫描深度（默认 3）
   max_size_kb: 100                      # 文件大小上限 KB（默认 100）
   min_size_kb: 1                        # 文件大小下限 KB（默认 1，过滤空文件和极小文件）
-  auto_discover: true                   # 自动探测技能子目录（默认 false）
+  auto_discover: false                  # 设为 false 可关闭自动探测（默认 true）
 ```
 
 ### auto_discover 自动探测
 
-当 `auto_discover: true` 时，引擎会自动在 Agent 的文件证据目录下探测以下子目录名：
+当 `auto_discover: true`（**默认**）时，引擎会自动在 Agent 的文件证据目录下探测以下子目录名：
 
 ```yaml
 # 自动探测的目录名：
@@ -494,7 +489,7 @@ Frontmatter 中 `---` 包裹的 YAML 会被自动解析并映射到 Skill 结构
 | `max_size_kb` | `100` |
 | `min_size_kb` | `1` |
 | `extensions` | `[".md", ".yaml", ".yml", ".json", ".toml"]` |
-| `auto_discover` | `false` |
+| `auto_discover` | `true` |
 
 > **注意**：`enabled` 默认为 `false`，必须显式设为 `true` 才会激活技能扫描。技能扫描会读取文件内容（最大 `max_size_kb` KB），忽略小于 `min_size_kb` KB 的文件以减少误报。
 

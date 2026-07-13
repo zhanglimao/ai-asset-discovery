@@ -75,6 +75,11 @@ func (l *Loader) Parse(data []byte) (*model.RulesFile, error) {
 			if len(rf.Agents[i].Skills.Extensions) == 0 {
 				rf.Agents[i].Skills.Extensions = []string{".md", ".yaml", ".yml", ".json", ".toml"}
 			}
+			// auto_discover defaults to true
+			if rf.Agents[i].Skills.AutoDiscover == nil {
+				v := true
+				rf.Agents[i].Skills.AutoDiscover = &v
+			}
 		}
 		// Normalize simplified features → legacy fields
 		l.normalizeFeatures(&rf.Agents[i])
@@ -116,7 +121,7 @@ func (l *Loader) normalizeFeatures(rule *model.AgentRule) {
 	if len(f.Packages) > 0 {
 		if rule.Package == nil {
 			rule.Package = &model.PackageRule{
-				Managers: []string{"pip", "npm", "apt", "brew"},
+				Managers: []string{"pip", "pip3", "npm", "apt", "brew"},
 			}
 		}
 		for _, pkg := range f.Packages {
