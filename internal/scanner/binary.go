@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -135,10 +136,9 @@ func (bs *BinaryScanner) findInPath(pp model.PatternRule) []string {
 }
 
 func getPathEnv() string {
-	cmd := exec.Command("sh", "-c", "echo $PATH")
-	out, err := cmd.Output()
-	if err != nil {
+	path := os.Getenv("PATH")
+	if path == "" {
 		return "/usr/local/bin:/usr/bin:/bin"
 	}
-	return strings.TrimSpace(string(out))
+	return path
 }

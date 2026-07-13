@@ -1,0 +1,29 @@
+FROM ubuntu:22.04
+
+# ============================================================================
+# Browser Agents — Independent per-agent testing
+# ============================================================================
+# Each agent: hardlink to /bin/sleep + config directory
+# ============================================================================
+
+# ── Manus ─────────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Manus && \
+    mkdir -p /root/.manus
+
+# ── Claude Computer Use ────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/computer-use && \
+    mkdir -p /root/.computer-use
+
+# ── Fellou (agent-native browser) ─────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Fellou && \
+    mkdir -p /root/.fellou
+
+# ── Genspark ──────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Genspark && \
+    mkdir -p /root/.genspark
+
+# ── AutoGLM (智谱AI) ─────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/AutoGLM && \
+    mkdir -p /root/.autoglm
+
+CMD ["sleep", "infinity"]

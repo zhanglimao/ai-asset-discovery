@@ -262,7 +262,11 @@ func (ps *PackageScanner) matchPackage(name string, patterns []model.PackagePatt
 				return true
 			}
 		case "regex":
-			matched, _ := regexp2.MustCompile(p.Name, regexp2.None).MatchString(name)
+			re, err := regexp2.Compile(p.Name, regexp2.None)
+			if err != nil {
+				continue
+			}
+			matched, _ := re.MatchString(name)
 			if matched {
 				return true
 			}

@@ -1,0 +1,113 @@
+FROM ubuntu:22.04
+
+# ============================================================================
+# CLI Agents — Independent per-agent focus
+# ============================================================================
+# Two-tier PATH design:
+#   /opt/agents/bin   → probe wrappers (--version returns realistic output) — first in PATH
+#   /usr/local/bin    → sleep hardlinks — for process comm detection
+# Process spawning uses explicit /usr/local/bin/<name> so comm = <name>
+# Discovery tool finds probe wrappers first → realistic version detection
+# ============================================================================
+
+ENV PATH=/opt/agents/bin:/usr/local/bin:/usr/bin:/bin
+
+RUN apt-get update && apt-get install -y curl wget python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /opt/agents/bin
+
+# ── Aider (REAL pip package → real probe + real package detection) ──
+RUN pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple aider-chat && \
+    # Real binary at /opt/agents/bin → probe gets real aider output
+    cp /usr/local/bin/aider /opt/agents/bin/aider && \
+    # Sleep hardlink at /usr/local/bin → process detection
+    ln -f /bin/sleep /usr/local/bin/aider && \
+    mkdir -p /root/.aider
+RUN echo 'model: anthropic/claude-sonnet-4-20250514' > /root/.aider.conf.yml && \
+    echo 'AIDER_MODEL=anthropic/claude-sonnet-4-20250514' > /root/.env
+
+# ── Claude Code (simulated: npm install fails in build env) ──
+# Real Claude Code output format: "Claude Code v0.2.27"
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "Claude Code v0.2.27"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/claude && \
+    chmod +x /opt/agents/bin/claude
+RUN ln -f /bin/sleep /usr/local/bin/claude && \
+    ln -f /bin/sleep /usr/local/bin/claude-code && \
+    mkdir -p /root/.claude /root/.claude-code
+RUN echo '{"model":"claude-sonnet-4-20250514","theme":"dark"}' > /root/.claude/config.json
+
+# ── Gemini CLI (simulated) ────────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "Gemini CLI v0.12.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/gemini && \
+    chmod +x /opt/agents/bin/gemini
+RUN ln -f /bin/sleep /usr/local/bin/gemini && \
+    ln -f /bin/sleep /usr/local/bin/gemini-cli && \
+    mkdir -p /root/.gemini
+RUN echo '{"model":"gemini-2.5-pro","project":"test-project"}' > /root/.gemini/config.json
+
+# ── OpenClaw (simulated) ──────────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "openclaw v2.3.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/openclaw && \
+    chmod +x /opt/agents/bin/openclaw
+RUN ln -f /bin/sleep /usr/local/bin/openclaw && \
+    mkdir -p /root/.openclaw
+RUN echo '{"llm":{"model":"claude-sonnet-4-20250514","provider":"anthropic"}}' > /root/.openclaw/config.json
+
+# ── Hermes Agent (simulated: successor to OpenClaw) ───────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "Hermes Agent v0.18.2"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/hermes && \
+    chmod +x /opt/agents/bin/hermes
+RUN ln -f /bin/sleep /usr/local/bin/hermes && \
+    mkdir -p /root/.hermes
+RUN echo '{"model":"claude-sonnet-4-20250514","provider":"anthropic","gateway":{"enabled":true}}' > /root/.hermes/config.json
+
+# ── OpenCode (simulated: anomalyco/opencode, 185k+ stars) ─────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "1.17.18"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/opencode && \
+    chmod +x /opt/agents/bin/opencode
+RUN ln -f /bin/sleep /usr/local/bin/opencode && \
+    mkdir -p /root/.opencode
+
+# ── Reasonix (simulated: DeepSeek-Reasonix) ──────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "1.17.11"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/reasonix && \
+    chmod +x /opt/agents/bin/reasonix
+RUN ln -f /bin/sleep /usr/local/bin/reasonix && \
+    mkdir -p /root/.reasonix
+
+# ── Kiro (simulated: AWS agentic IDE+CLI) ────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "0.12.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/kiro-cli && \
+    chmod +x /opt/agents/bin/kiro-cli
+RUN ln -f /bin/sleep /usr/local/bin/kiro-cli && \
+    mkdir -p /root/.kiro
+
+# ── Oh My Pi / omp (simulated: 17.5k stars) ──────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "16.4.8"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/omp && \
+    chmod +x /opt/agents/bin/omp
+RUN ln -f /bin/sleep /usr/local/bin/omp && \
+    mkdir -p /root/.omp
+
+# ── Grok CLI (simulated: superagent-ai/grok-cli, 3.3k stars) ─
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "1.1.7"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/grok && \
+    chmod +x /opt/agents/bin/grok
+RUN ln -f /bin/sleep /usr/local/bin/grok && \
+    mkdir -p /root/.grok
+
+# ── Open Interpreter (simulated: 64k stars, Rust rewrite) ────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "0.0.21"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/interpreter && \
+    chmod +x /opt/agents/bin/interpreter
+RUN ln -f /bin/sleep /usr/local/bin/interpreter && \
+    mkdir -p /root/.openinterpreter
+
+# ── Devin / Codex / Qwen / OpenHands / Goose / Warp ───────────
+RUN for name in devin codex qwen openhands goose warp; do \
+        ln -f /bin/sleep "/usr/local/bin/$name" && \
+        printf '#!/bin/bash\necho "%s v1.0.0"\n' "$name" > "/opt/agents/bin/$name" && \
+        chmod +x "/opt/agents/bin/$name"; \
+    done && \
+    mkdir -p /root/.devin /root/.codex /root/.qwen/skills /root/.openhands /root/.goose /root/.warp
+
+# ── Skill directories ────────────────────────────────────────
+RUN mkdir -p /root/.claude/skills/code-review /root/.claude-code/skills/code-review \
+             /root/.gemini/skills/code-review /root/.openclaw/skills/code-review \
+             /root/.openclaw/tools \
+             /root/.hermes/skills/code-review \
+             /root/.kiro/skills/code-review /root/.omp/skills/code-review \
+             /root/.grok/skills/code-review /root/.openinterpreter/skills/code-review
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

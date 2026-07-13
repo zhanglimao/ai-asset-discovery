@@ -61,8 +61,8 @@ func TestRealRules_ParseAndValidate(t *testing.T) {
 			if !hasDetection {
 				t.Error("no detection method (process, files, or IDE)")
 			}
-			if agent.Skills != nil && len(agent.Skills.Keywords) == 0 {
-				t.Error("skill rule has no keywords")
+			if agent.Skills != nil {
+				// Skill rule is valid; no keywords required (SKILL.md-only matching)
 			}
 		})
 	}
@@ -201,11 +201,12 @@ func TestRealRules_SkillRuleStructure(t *testing.T) {
 			if sr.MaxSizeKB == 0 {
 				t.Error("MaxSizeKB default not applied")
 			}
-			if len(sr.Extensions) == 0 {
-				t.Error("Extensions default not applied")
-			}
-			if len(sr.ScanPaths) == 0 {
-				t.Error("no scan_paths")
+			// Extensions removed — only SKILL.md is matched now
+			// scan_paths is optional when auto_discover is enabled (default true);
+			// only require it when auto_discover is explicitly disabled.
+			adEnabled := sr.AutoDiscover == nil || *sr.AutoDiscover
+			if !adEnabled && len(sr.ScanPaths) == 0 {
+				t.Error("no scan_paths and auto_discover is disabled")
 			}
 		})
 	}

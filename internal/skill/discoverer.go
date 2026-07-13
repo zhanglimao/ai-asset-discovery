@@ -1,7 +1,6 @@
 package skill
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +11,11 @@ import (
 	"github.com/ai-asset-discovery/internal/model"
 )
 
-// Discoverer finds and parses skill files.
+// SKILL.md is the only high-quality skill signal per the Agent Skills
+// specification (https://agentskills.io/specification).
+const skillFileName = "SKILL.md"
+
+// Discoverer finds and parses SKILL.md files.
 type Discoverer struct{}
 
 // NewDiscoverer creates a new Discoverer.
@@ -92,8 +95,8 @@ func (d *Discoverer) DiscoverSkillsWithProbe(rule model.AgentRule, fileDirs []st
 		allSkills = append(allSkills, skills...)
 	}
 
-	// Phase 2: auto-probe if enabled
-	if sr.AutoDiscover != nil && *sr.AutoDiscover && len(fileDirs) > 0 {
+	// Phase 2: auto-probe if enabled (defaults to true when skills.enabled)
+	if (sr.AutoDiscover == nil || *sr.AutoDiscover) && len(fileDirs) > 0 {
 		probed := ProbeSkillDirs(fileDirs)
 		for _, probePath := range probed {
 			// Skip already-scanned paths (avoid scanning same dir twice)
@@ -124,6 +127,8 @@ func isInPaths(target string, paths []string) bool {
 	return false
 }
 
+// scanPath walks a directory tree and parses every SKILL.md file it finds.
+// Only files named exactly "SKILL.md" (case-insensitive) are considered.
 func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 	var skills []model.Skill
 
@@ -135,8 +140,6 @@ func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 	if maxSize == 0 {
 		maxSize = 102400 // 100KB default
 	}
-	// Minimum file size to avoid empty/tiny files (1KB)
-	const minSize = 1024
 
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
@@ -153,18 +156,12 @@ func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 			return nil
 		}
 
-		// Skip hidden files
-		if strings.HasPrefix(entry.Name(), ".") {
+		// Only match files named SKILL.md (case-insensitive)
+		if !strings.EqualFold(entry.Name(), skillFileName) {
 			return nil
 		}
 
-		// Filter by extension
-		ext := filepath.Ext(entry.Name())
-		if !d.isAllowedExt(ext, sr.Extensions) {
-			return nil
-		}
-
-		// Size filter (both min and max)
+		// Size filter
 		info, err := entry.Info()
 		if err != nil {
 			return nil
@@ -172,45 +169,9 @@ func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 		if info.Size() > int64(maxSize) {
 			return nil
 		}
-		if info.Size() < int64(minSize) {
-			return nil
-		}
 
-		// Exclude files with template/example markers in name
-		nameLower := strings.ToLower(entry.Name())
-		if strings.Contains(nameLower, "todo") ||
-			strings.Contains(nameLower, "example") ||
-			strings.Contains(nameLower, "template") ||
-			strings.Contains(nameLower, "readme") {
-			return nil
-		}
-
-		// Content filter — check raw content for keywords before full parsing
-		if len(sr.Keywords) > 0 {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-			// Check first 2KB for keywords
-			preview := data
-			if len(preview) > 2048 {
-				preview = preview[:2048]
-			}
-			previewLower := strings.ToLower(string(preview))
-			hasKeyword := false
-			for _, kw := range sr.Keywords {
-				if strings.Contains(previewLower, strings.ToLower(kw)) {
-					hasKeyword = true
-					break
-				}
-			}
-			if !hasKeyword {
-				return nil
-			}
-		}
-
-		// Now parse the full file
-		skill, err := d.parseSkillFile(path, ext)
+		// Parse the SKILL.md file
+		skill, err := d.parseSkillFile(path)
 		if err != nil {
 			return nil
 		}
@@ -225,33 +186,13 @@ func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 	return skills
 }
 
-func (d *Discoverer) isAllowedExt(ext string, allowed []string) bool {
-	for _, a := range allowed {
-		if strings.EqualFold(ext, a) {
-			return true
-		}
-	}
-	return false
-}
-
-func (d *Discoverer) parseSkillFile(path, ext string) (*model.Skill, error) {
+// parseSkillFile parses a single SKILL.md file.
+func (d *Discoverer) parseSkillFile(path string) (*model.Skill, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-
-	switch ext {
-	case ".md":
-		return d.parseSKILLmd(path, string(data))
-	case ".yaml", ".yml":
-		return d.parseYAMLSkill(path, data)
-	case ".json":
-		return d.parseJSONSkill(path, data)
-	case ".toml":
-		return d.parseTOMLSkill(path, string(data))
-	default:
-		return nil, nil
-	}
+	return d.parseSKILLmd(path, string(data))
 }
 
 // parseSKILLmd parses a SKILL.md file per the Agent Skills specification:
@@ -428,71 +369,6 @@ func (d *Discoverer) parseParameterSection(skill *model.Skill, content string) {
 	}
 }
 
-func (d *Discoverer) parseYAMLSkill(path string, data []byte) (*model.Skill, error) {
-	var raw map[string]any
-	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return nil, err
-	}
-	skill := &model.Skill{FilePath: path, Format: "yaml"}
-	d.extractFromMap(skill, raw)
-	if skill.Name == "" {
-		return nil, nil
-	}
-	return skill, nil
-}
-
-func (d *Discoverer) parseJSONSkill(path string, data []byte) (*model.Skill, error) {
-	var raw map[string]any
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, err
-	}
-	skill := &model.Skill{FilePath: path, Format: "json"}
-	d.extractFromMap(skill, raw)
-	if skill.Name == "" {
-		return nil, nil
-	}
-	return skill, nil
-}
-
-func (d *Discoverer) parseTOMLSkill(path, content string) (*model.Skill, error) {
-	// Simple TOML parsing for skills (basic key=value)
-	skill := &model.Skill{FilePath: path, Format: "toml"}
-	lines := strings.Split(content, "\n")
-	currentSection := ""
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			currentSection = line[1 : len(line)-1]
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		val := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
-		switch key {
-		case "name":
-			skill.Name = val
-		case "description":
-			skill.Description = val
-		case "version":
-			skill.Version = val
-		case "model":
-			if currentSection == "llm" {
-				skill.Metadata = map[string]any{"model": val}
-			}
-		}
-	}
-	if skill.Name == "" {
-		return nil, nil
-	}
-	return skill, nil
-}
-
 func (d *Discoverer) extractFromMap(skill *model.Skill, data map[string]any) {
 	if v, ok := data["name"].(string); ok {
 		skill.Name = v
@@ -552,21 +428,4 @@ func (d *Discoverer) extractFromMap(skill *model.Skill, data map[string]any) {
 	if meta, ok := data["metadata"].(map[string]any); ok {
 		skill.Metadata = meta
 	}
-}
-
-func (d *Discoverer) containsAnyKeyword(skill *model.Skill, keywords []string) bool {
-	if len(keywords) == 0 {
-		return true // no keyword filter
-	}
-	// Build searchable text
-	search := strings.ToLower(skill.Name + " " +
-		skill.Description + " " +
-		skill.DisplayName + " " +
-		skill.PromptTemplate)
-	for _, kw := range keywords {
-		if strings.Contains(search, strings.ToLower(kw)) {
-			return true
-		}
-	}
-	return false
 }

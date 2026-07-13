@@ -1,0 +1,30 @@
+FROM ubuntu:22.04
+
+# ============================================================================
+# Agent Platforms & Frameworks — Dify, Coze, DingTalk, Yuanqi, Bolt, Replit
+# ============================================================================
+# Process + file evidence
+
+# ── Dify ──────────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/dify && \
+    mkdir -p /root/.dify
+
+# ── 扣子 (Coze) ───────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/coze && \
+    mkdir -p /root/.coze
+
+# ── 钉钉AI助理 ────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/dingtalk && \
+    mkdir -p /root/.dingtalk
+
+# ── 腾讯元器 ──────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/yuanqi && \
+    mkdir -p /root/.yuanqi
+
+# ── Bolt.new (file-only, no process) ──────────────────────────
+RUN mkdir -p /root/.bolt
+
+# ── Replit Agent (file-only, no process) ──────────────────────
+RUN mkdir -p /root/.replit
+
+CMD ["sleep", "infinity"]

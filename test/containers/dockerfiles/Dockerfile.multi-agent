@@ -1,47 +1,103 @@
 FROM ubuntu:22.04
 
-RUN apt-get update && apt-get install -y curl wget python3 python3-pip git && rm -rf /var/lib/apt/lists/*
+# ============================================================================
+# Multi-Agent Mixed Environment — Real + Simulated in one container
+# ============================================================================
+# Validates dedup across categories: CLI agents + SDKs + IDE extensions together
+# ============================================================================
 
-# Install real Python packages for mixed agent test
+ENV PATH=/opt/agents/bin:/usr/local/bin:/usr/bin:/bin
+
+RUN apt-get update && apt-get install -y curl wget python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /opt/agents/bin
+
+# ── Real Python SDK packages ──────────────────────────────────
 RUN pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple \
-    langchain langgraph crewai autogen-agentchat llama-index
+    langchain langgraph crewai autogen-agentchat
 
-# Hardlinks for process detection
-RUN for bin in aider claude-code; do ln -f /bin/sleep /usr/local/bin/$bin; done
+# ── Real Aider (pip) ──────────────────────────────────────────
+RUN pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple aider-chat && \
+    cp /usr/local/bin/aider /opt/agents/bin/aider && \
+    ln -f /bin/sleep /usr/local/bin/aider
+RUN echo 'model: claude-sonnet-4' > /root/.aider.conf.yml && \
+    echo 'AIDER_MODEL=claude-sonnet-4' > /root/.env
 
-# Aider config
-RUN echo 'model: claude-3' > /root/.aider.conf.yml && \
-    echo 'AIDER_MODEL=claude-3' > /root/.env
-
-# Claude Code config
+# ── Claude Code (simulated: npm install fails in build env) ──
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "Claude Code v0.2.27"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/claude && \
+    chmod +x /opt/agents/bin/claude && \
+    ln -f /bin/sleep /usr/local/bin/claude && \
+    ln -f /bin/sleep /usr/local/bin/claude-code
 RUN mkdir -p /root/.claude /root/.claude-code && \
     echo '{"model":"claude-sonnet-4"}' > /root/.claude-code/config.json
 
-# Cline
-RUN mkdir -p /root/.cline/skills
+# ── Hermes Agent (simulated) ──────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "Hermes Agent v0.18.2"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/hermes && \
+    chmod +x /opt/agents/bin/hermes && \
+    ln -f /bin/sleep /usr/local/bin/hermes
+RUN mkdir -p /root/.hermes && \
+    echo '{"model":"claude-sonnet-4"}' > /root/.hermes/config.json
 
-# Continue
-RUN mkdir -p /root/.continue/agents
+# ── OpenCode (simulated) ─────────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "1.17.18"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/opencode && \
+    chmod +x /opt/agents/bin/opencode && \
+    ln -f /bin/sleep /usr/local/bin/opencode
+RUN mkdir -p /root/.opencode
 
-# VS Code extensions: GitHub Copilot + Cline
+# ── Reasonix (simulated) ────────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "1.17.11"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/reasonix && \
+    chmod +x /opt/agents/bin/reasonix && \
+    ln -f /bin/sleep /usr/local/bin/reasonix
+RUN mkdir -p /root/.reasonix
+
+# ── Kiro (simulated) ─────────────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "0.12.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/kiro-cli && \
+    chmod +x /opt/agents/bin/kiro-cli && \
+    ln -f /bin/sleep /usr/local/bin/kiro-cli
+RUN mkdir -p /root/.kiro
+
+# ── Oh My Pi / omp (simulated) ──────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "16.4.8"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/omp && \
+    chmod +x /opt/agents/bin/omp && \
+    ln -f /bin/sleep /usr/local/bin/omp
+RUN mkdir -p /root/.omp
+
+# ── Grok CLI (simulated) ────────────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "1.1.7"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/grok && \
+    chmod +x /opt/agents/bin/grok && \
+    ln -f /bin/sleep /usr/local/bin/grok
+RUN mkdir -p /root/.grok
+
+# ── Open Interpreter (simulated) ─────────────────────────────
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "0.0.21"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/interpreter && \
+    chmod +x /opt/agents/bin/interpreter && \
+    ln -f /bin/sleep /usr/local/bin/interpreter
+RUN mkdir -p /root/.openinterpreter
+
+# ── SDK process wrappers (two-tier) ───────────────────────────
+RUN for name in langchain autogen crewai; do \
+        printf '#!/bin/bash\necho "%s v1.0.0"\n' "$name" > "/opt/agents/bin/$name" && \
+        chmod +x "/opt/agents/bin/$name" && \
+        ln -f /bin/sleep "/usr/local/bin/$name"; \
+    done
+
+# ── IDE Extensions ────────────────────────────────────────────
 RUN mkdir -p /root/.vscode/extensions/github.copilot-1.200.0 && \
     echo '{"name":"copilot","publisher":"GitHub","displayName":"GitHub Copilot","version":"1.200.0","categories":["Machine Learning"],"keywords":["ai","copilot"]}' > /root/.vscode/extensions/github.copilot-1.200.0/package.json
-
 RUN mkdir -p /root/.vscode/extensions/saoudrizwan.claude-dev-3.5.0 && \
-    echo '{"name":"claude-dev","publisher":"saoudrizwan","displayName":"Cline","version":"3.5.0","categories":["Other"],"keywords":["ai","agent","cline"],"activationEvents":["onAgent:cline"],"contributes":{"commands":[{"command":"cline.createAgent","title":"Create Agent"}]}}' > /root/.vscode/extensions/saoudrizwan.claude-dev-3.5.0/package.json
-
-# Tabnine
+    echo '{"name":"claude-dev","publisher":"saoudrizwan","displayName":"Cline","version":"3.5.0","categories":["Other"],"keywords":["ai","agent","cline"],"activationEvents":["onAgent:cline"],"contributes":{"commands":[{"command":"cline.createAgent","title":"Create Agent"}]}}' > /root/.vscode/extensions/saoudrizwan.claude-dev-3.5.0/package.json && \
+    mkdir -p /root/.cline/skills
 RUN mkdir -p /root/.vscode/extensions/TabNine.tabnine-vscode-3.100.0 && \
-    echo '{"name":"tabnine-vscode","publisher":"TabNine","displayName":"Tabnine","version":"3.100.0","categories":["Machine Learning"],"keywords":["tabnine","ai","autocomplete","code"]}' > /root/.vscode/extensions/TabNine.tabnine-vscode-3.100.0/package.json
-RUN mkdir -p /root/.tabnine/agent/skills
-
-# CodeBuddy
+    echo '{"name":"tabnine-vscode","publisher":"TabNine","displayName":"Tabnine","version":"3.100.0","categories":["Machine Learning"],"keywords":["tabnine","ai","autocomplete","code"]}' > /root/.vscode/extensions/TabNine.tabnine-vscode-3.100.0/package.json && \
+    mkdir -p /root/.tabnine/agent/skills
 RUN mkdir -p /root/.vscode/extensions/tencent.codebuddy-1.0.0 && \
-    echo '{"name":"codebuddy","publisher":"tencent","displayName":"CodeBuddy","version":"1.0.0","categories":["Machine Learning"],"keywords":["codebuddy","tencent","craft","agent"]}' > /root/.vscode/extensions/tencent.codebuddy-1.0.0/package.json
-RUN mkdir -p /root/.codebuddy/skills
-
-# Qoder
+    echo '{"name":"codebuddy","publisher":"tencent","displayName":"CodeBuddy","version":"1.0.0","categories":["Machine Learning"],"keywords":["codebuddy","tencent","craft","agent"]}' > /root/.vscode/extensions/tencent.codebuddy-1.0.0/package.json && \
+    mkdir -p /root/.codebuddy/skills
 RUN mkdir -p /root/.vscode/extensions/alibaba.qoder-1.0.0 && \
     echo '{"name":"qoder","publisher":"alibaba","displayName":"Qoder","version":"1.0.0","categories":["Machine Learning"],"keywords":["qoder","alibaba","agent"]}' > /root/.vscode/extensions/alibaba.qoder-1.0.0/package.json
 
+# ── File detection dirs ───────────────────────────────────────
+RUN mkdir -p /root/.cache
+
+WORKDIR /workspace
 CMD ["sleep", "infinity"]

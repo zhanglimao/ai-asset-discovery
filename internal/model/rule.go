@@ -171,13 +171,9 @@ type SkillRule struct {
 	// the agent was not detected by other methods.
 	Enabled bool `yaml:"enabled" json:"enabled"`
 
-	// Paths to scan for skill files
+	// Paths to scan for skill files (SKILL.md format)
 	ScanPaths []string `yaml:"scan_paths" json:"scan_paths"`
-	// File extensions to consider
-	Extensions []string `yaml:"extensions" json:"extensions"`
-	// Keywords that must appear in skill files
-	Keywords []string `yaml:"keywords" json:"keywords"`
-	// Max recursion depth
+	// Max recursion depth when scanning directories
 	MaxDepth int `yaml:"max_depth" json:"max_depth"`
 	// Max file size to parse (KB)
 	MaxSizeKB int `yaml:"max_size_kb" json:"max_size_kb"`

@@ -1,14 +1,33 @@
 FROM python:3.12-slim
 
-# Install real LLM SDK packages
+# ============================================================================
+# LLM SDK Detection — Real pip packages, simulated npm
+# ============================================================================
+# Package detection: pip list → package scanner detects installed SDKs
+# Process: wrappers for llm-sdk-detected rule's process name_patterns
+# Two-tier: /opt/agents/bin for probe, /usr/local/bin for process comm
+# ============================================================================
+
+ENV PATH=/opt/agents/bin:/usr/local/bin:/usr/bin:/bin
+
+RUN mkdir -p /opt/agents/bin
+
+# Install real LLM SDK packages (pip)
 RUN pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
     openai anthropic langchain langgraph langchain-openai langchain-anthropic \
     llama-index autogen-agentchat crewai
 
-# Install nodejs + npm LLM SDKs
-RUN apt-get update && apt-get install -y nodejs npm && \
-    npm install -g --registry=https://registry.npmmirror.com @anthropic-ai/sdk openai langchain && \
-    rm -rf /var/lib/apt/lists/*
+# Process wrappers for SDK-based agents (two-tier)
+# /opt/agents/bin/<name> → probe wrapper with version output
+# /usr/local/bin/<name> → sleep hardlink for process comm detection
+RUN for name in langchain langgraph llama_index autogen crewai; do \
+        printf '#!/bin/bash\ncase "$*" in *--version*|*-v*) echo "%s v1.0.0" ;; esac\nexec sleep 999999\n' "$name" > "/opt/agents/bin/$name" && \
+        chmod +x "/opt/agents/bin/$name" && \
+        ln -f /bin/sleep "/usr/local/bin/$name"; \
+    done
+
+# Create cache directory for linux file detection (llm-sdk-detected)
+RUN mkdir -p /root/.cache
 
 WORKDIR /workspace
 CMD ["sleep", "infinity"]

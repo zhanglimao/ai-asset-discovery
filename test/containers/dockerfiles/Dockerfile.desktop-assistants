@@ -1,0 +1,79 @@
+FROM ubuntu:22.04
+
+# ============================================================================
+# Desktop Assistants — Independent per-agent testing
+# ============================================================================
+# Each agent: hardlink to /bin/sleep → /proc/PID/comm = agent name ✓
+# Config directories for file-based detection
+# Note: No probe for desktop agents (they don't have CLI version flags)
+# ============================================================================
+
+# ── Windsurf ──────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/windsurf && \
+    mkdir -p /root/.windsurf/extensions /root/.windsurf
+
+# ── ChatGPT Desktop ───────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/chatgpt-desktop && \
+    mkdir -p /root/.config/ChatGPT
+
+# ── Claude Desktop ────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Claude && \
+    mkdir -p /root/.config/Claude
+
+# ── WorkBuddy ─────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/WorkBuddy && \
+    mkdir -p /root/.workbuddy
+
+# ── Marvis (腾讯应用宝) ────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Marvis && \
+    mkdir -p /root/.Marvis
+
+# ── Qclaw (腾讯电脑管家) ──────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Qclaw && \
+    mkdir -p /root/.Qclaw
+
+# ── QoderWork (阿里) ──────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/QoderWork && \
+    mkdir -p /root/.QoderWork
+
+# ── TRAE Work (字节跳动) ──────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/TRAE && \
+    mkdir -p /root/.trae
+
+# ── 豆包专业版 ────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/doubao && \
+    mkdir -p /root/.doubao
+
+# ── Kimi Work ─────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Kimi && \
+    mkdir -p /root/.kimi
+
+# ── DuMate (百度) ─────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/DuMate && \
+    mkdir -p /root/.DuMate
+
+# ── 阶跃AI ────────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/jieyue && \
+    mkdir -p /root/.jieyue
+
+# ── AutoClaw (智谱AI) ─────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/AutoClaw && \
+    mkdir -p /root/.AutoClaw
+
+# ── lobsterAI (网易) ──────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/lobster && \
+    mkdir -p /root/.lobster
+
+# ── Cola ──────────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Cola && \
+    mkdir -p /root/.Cola
+
+# ── Alice ─────────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/Alice && \
+    mkdir -p /root/.Alice
+
+# ── 牛马AI ────────────────────────────────────────────────────
+RUN ln /bin/sleep /usr/local/bin/niuma && \
+    mkdir -p /root/.niuma
+
+CMD ["sleep", "infinity"]

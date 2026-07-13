@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/ai-asset-discovery/internal/model"
 )
 
@@ -103,7 +105,7 @@ func TestEngine_Run_WithSkills(t *testing.T) {
 	skillDir := filepath.Join(tmpDir, "skills")
 	os.MkdirAll(skillDir, 0755)
 	// Skill file must exceed 1KB minimum size
-	os.WriteFile(filepath.Join(skillDir, "test-skill.md"),
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"),
 		[]byte("---\nname: test-skill\ndescription: Test skill with padding to meet minimum size requirement\n---\n# Test\n"+
 			"This is a skill for testing purposes.\n"+
 			"It contains enough content to exceed the 1KB minimum file size filter.\n"+
@@ -125,10 +127,6 @@ agents:
       enabled: true
       scan_paths:
         - ` + skillDir + `
-      extensions:
-        - .md
-      keywords:
-        - skill
 `)
 
 	err := engine.LoadRulesFromBytes(yamlData)
@@ -879,5 +877,163 @@ agents:
 	}
 	if !found {
 		t.Error("copilot-ext not found")
+	}
+}
+
+// TestEngine_Run_WithAutoProbeSkills verifies that when an agent rule has
+// skills.enabled:true but NO scan_paths, auto_discover (default=true) probes
+// file-evidence directories for skill subdirs and discovers skills there.
+func TestEngine_Run_WithAutoProbeSkills(t *testing.T) {
+	engine := NewEngine()
+
+	// Create an agent file-evidence directory with a "skills" subdirectory
+	agentDir := t.TempDir()
+	skillDir := filepath.Join(agentDir, "skills")
+	os.MkdirAll(skillDir, 0755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"),
+		[]byte("---\nname: autoprobe-skill\ndescription: Skill found by auto-probe\n---\n# Auto Probe\n"+
+			strings.Repeat("This is padding to reach the required minimum file size for skill detection.\n", 20)), 0644)
+
+	// Rule with skills.enabled but NO scan_paths — relies on auto_discover default
+	yamlData := []byte(`
+version: "1.0"
+agents:
+  - name: auto-agent
+    display_name: "Auto Agent"
+    description: "Agent detected via path, skills via auto-probe"
+    category: "test"
+    min_confidence: possible
+    paths:
+      - path: ` + agentDir + `
+    features:
+      processes:
+        - auto-agent
+    skills:
+      enabled: true
+`)
+
+	err := engine.LoadRulesFromBytes(yamlData)
+	if err != nil {
+		t.Fatalf("LoadRulesFromBytes() error: %v", err)
+	}
+
+	result, err := engine.Run()
+	if err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+
+	var autoAgent *model.DiscoveredAgent
+	for i := range result.Agents {
+		if result.Agents[i].Name == "auto-agent" {
+			autoAgent = &result.Agents[i]
+			break
+		}
+	}
+
+	if autoAgent == nil {
+		t.Fatal("auto-agent not found")
+	}
+
+	if len(autoAgent.Skills) < 1 {
+		t.Errorf("auto_discover should have found at least 1 skill via auto-probe; got %d", len(autoAgent.Skills))
+	} else {
+		if autoAgent.Skills[0].Name != "autoprobe-skill" {
+			t.Errorf("expected skill name 'autoprobe-skill', got %q", autoAgent.Skills[0].Name)
+		}
+	}
+}
+
+// TestEngine_Run_WithAutoDiscoverDisabled verifies that when auto_discover is
+// explicitly set to false AND no scan_paths are given, no skills are discovered.
+func TestEngine_Run_WithAutoDiscoverDisabled(t *testing.T) {
+	engine := NewEngine()
+
+	agentDir := t.TempDir()
+	skillDir := filepath.Join(agentDir, "skills")
+	os.MkdirAll(skillDir, 0755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"),
+		[]byte("---\nname: hidden-skill\ndescription: Should not be discovered\n---\n# Hidden\n"+
+			strings.Repeat("padding for minimum file size requirement.\n", 20)), 0644)
+
+	yamlData := []byte(`
+version: "1.0"
+agents:
+  - name: no-auto-agent
+    display_name: "No Auto Agent"
+    description: "Agent with auto_discover explicitly false"
+    category: "test"
+    min_confidence: possible
+    paths:
+      - path: ` + agentDir + `
+    features:
+      processes:
+        - no-auto-agent
+    skills:
+      enabled: true
+      auto_discover: false
+`)
+
+	err := engine.LoadRulesFromBytes(yamlData)
+	if err != nil {
+		t.Fatalf("LoadRulesFromBytes() error: %v", err)
+	}
+
+	result, err := engine.Run()
+	if err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+
+	var noAutoAgent *model.DiscoveredAgent
+	for i := range result.Agents {
+		if result.Agents[i].Name == "no-auto-agent" {
+			noAutoAgent = &result.Agents[i]
+			break
+		}
+	}
+
+	if noAutoAgent == nil {
+		t.Fatal("no-auto-agent not found")
+	}
+
+	if len(noAutoAgent.Skills) != 0 {
+		t.Errorf("auto_discover=false should NOT find any skills; got %d", len(noAutoAgent.Skills))
+	}
+}
+
+// TestEngine_Run_AllAgentsHaveSkillConfig verifies that every agent rule in
+// agents.yaml has a skills config block (enabled or disabled).
+func TestEngine_Run_AllAgentsHaveSkillConfig(t *testing.T) {
+	projectRoot := filepath.Join("..", "..")
+	yamlPath := filepath.Join(projectRoot, "rules", "agents.yaml")
+	data, err := os.ReadFile(yamlPath)
+	if err != nil {
+		t.Fatalf("read agents.yaml: %v", err)
+	}
+	var rf model.RulesFile
+	if err := yaml.Unmarshal(data, &rf); err != nil {
+		t.Fatalf("parse agents.yaml: %v", err)
+	}
+
+	agentsWithoutSkills := make([]string, 0)
+	for _, agent := range rf.Agents {
+		if agent.Skills == nil {
+			agentsWithoutSkills = append(agentsWithoutSkills, agent.Name)
+		}
+	}
+
+	// Only package-only agents (no file-evidence paths) are allowed to
+	// skip skills — they have nowhere to probe.
+	packageOnlyAgents := map[string]bool{
+		"langchain":        true,
+		"llamaindex":       true,
+		"autogen":          true,
+		"crewai":           true,
+		"llm-sdk-detected": true,
+	}
+
+	for _, name := range agentsWithoutSkills {
+		if !packageOnlyAgents[name] {
+			t.Errorf("agent %q has no skills block; all agents with file-evidence paths should have skills.enabled", name)
+		}
 	}
 }

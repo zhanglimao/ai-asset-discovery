@@ -72,9 +72,6 @@ func (l *Loader) Parse(data []byte) (*model.RulesFile, error) {
 			if rf.Agents[i].Skills.MaxSizeKB == 0 {
 				rf.Agents[i].Skills.MaxSizeKB = 100
 			}
-			if len(rf.Agents[i].Skills.Extensions) == 0 {
-				rf.Agents[i].Skills.Extensions = []string{".md", ".yaml", ".yml", ".json", ".toml"}
-			}
 			// auto_discover defaults to true
 			if rf.Agents[i].Skills.AutoDiscover == nil {
 				v := true

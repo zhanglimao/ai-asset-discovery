@@ -78,8 +78,6 @@ agents:
     skills:
       scan_paths:
         - /tmp/skills
-      keywords:
-        - skill
 `)
 
 	rf, err := loader.Parse(yamlData)
@@ -100,9 +98,6 @@ agents:
 	}
 	if sk.MaxSizeKB != 100 {
 		t.Errorf("Skills.MaxSizeKB = %d, want 100 (default)", sk.MaxSizeKB)
-	}
-	if len(sk.Extensions) == 0 {
-		t.Error("Skills.Extensions should have defaults")
 	}
 }
 

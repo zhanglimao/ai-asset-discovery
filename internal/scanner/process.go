@@ -101,6 +101,12 @@ func (ps *ProcessScanner) matchProcesses(rule model.AgentRule, procs []model.Pro
 }
 
 func (ps *ProcessScanner) evaluateProcess(pr *model.ProcessRule, proc model.ProcessInfo) []string {
+	// If all pattern groups are empty, skip — nothing to match against.
+	if len(pr.NamePatterns) == 0 && len(pr.CmdPatterns) == 0 &&
+		len(pr.ExePatterns) == 0 && len(pr.DirPatterns) == 0 {
+		return nil
+	}
+
 	var matches []string
 
 	// Helper to check patterns
@@ -114,21 +120,27 @@ func (ps *ProcessScanner) evaluateProcess(pr *model.ProcessRule, proc model.Proc
 		return false
 	}
 
-	nameHit := len(pr.NamePatterns) == 0
-	cmdHit := len(pr.CmdPatterns) == 0
-	exeHit := len(pr.ExePatterns) == 0
-	dirHit := len(pr.DirPatterns) == 0
+	// Track whether each field was actively checked (had patterns)
+	hasName := len(pr.NamePatterns) > 0
+	hasCmd := len(pr.CmdPatterns) > 0
+	hasExe := len(pr.ExePatterns) > 0
+	hasDir := len(pr.DirPatterns) > 0
 
-	if len(pr.NamePatterns) > 0 {
+	nameHit := !hasName
+	cmdHit := !hasCmd
+	exeHit := !hasExe
+	dirHit := !hasDir
+
+	if hasName {
 		nameHit = checkPatterns(pr.NamePatterns, proc.Name, "name")
 	}
-	if len(pr.CmdPatterns) > 0 {
+	if hasCmd {
 		cmdHit = checkPatterns(pr.CmdPatterns, proc.CmdLine, "cmd")
 	}
-	if len(pr.ExePatterns) > 0 {
+	if hasExe {
 		exeHit = checkPatterns(pr.ExePatterns, proc.Executable, "exe")
 	}
-	if len(pr.DirPatterns) > 0 {
+	if hasDir {
 		dirHit = checkPatterns(pr.DirPatterns, proc.CWD, "cwd")
 	}
 

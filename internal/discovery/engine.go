@@ -205,8 +205,14 @@ func (e *Engine) Run() (*Result, error) {
 	probeAgents := e.probeScanner.Scan(e.rules.Agents)
 	result.Agents = append(result.Agents, probeAgents...)
 
-	// Deduplicate
+	// Deduplicate within each type first (e.g. two "possible" process entries)
 	result.Agents = deduplicateAgents(result.Agents)
+
+	// Cross-type merge: consolidate multiple evidence types for the same
+	// agent name into a single entry.  When process evidence confirms the
+	// agent, all other evidence types (file, binary, probe, package) are
+	// merged as supporting signals and the overall confidence is promoted.
+	result.Agents = mergeCrossType(result.Agents)
 
 	// Populate summary
 	e.populateSummary(result, errors)
@@ -353,6 +359,120 @@ func confidenceRank(c model.Confidence) int {
 	default:
 		return 0
 	}
+}
+
+// mergeCrossType consolidates multiple DiscoveredAgent entries that share
+// the same name but were produced by different scanners (process, file,
+// binary, probe, package).  The entry with the highest confidence wins,
+// and evidence from remaining entries is merged as supporting signals.
+//
+// AssetType preference when all confidences are equal: process > probe >
+// binary > package > file > ide_extension.
+func mergeCrossType(agents []model.DiscoveredAgent) []model.DiscoveredAgent {
+	seen := make(map[string]*model.DiscoveredAgent)
+	for i := range agents {
+		a := &agents[i]
+		if existing, ok := seen[a.Name]; ok {
+			mergeAgentEvidence(existing, a)
+		} else {
+			seen[a.Name] = a
+		}
+	}
+	var result []model.DiscoveredAgent
+	for _, v := range seen {
+		result = append(result, *v)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+	return result
+}
+
+// mergeAgentEvidence merges supporting evidence from src into dst.
+// dst is the primary entry; src provides additional signals.
+func mergeAgentEvidence(dst, src *model.DiscoveredAgent) {
+	// Promote confidence if src has higher rank
+	if confidenceRank(src.Confidence) > confidenceRank(dst.Confidence) {
+		// Swap roles: src becomes primary
+		src.Skills = append(src.Skills, dst.Skills...)
+		src.Files = append(src.Files, dst.Files...)
+		if src.Version == "" && dst.Version != "" {
+			src.Version = dst.Version
+		}
+		if src.Process == nil && dst.Process != nil {
+			src.Process = dst.Process
+		}
+		if src.Probe == nil && dst.Probe != nil {
+			src.Probe = dst.Probe
+		}
+		if src.Binary == nil && dst.Binary != nil {
+			src.Binary = dst.Binary
+		}
+		if src.Package == nil && dst.Package != nil {
+			src.Package = dst.Package
+		}
+		if src.Extension == nil && dst.Extension != nil {
+			src.Extension = dst.Extension
+		}
+		if len(src.Config) == 0 && len(dst.Config) > 0 {
+			src.Config = dst.Config
+		}
+		if src.SkillDir == "" && dst.SkillDir != "" {
+			src.SkillDir = dst.SkillDir
+		}
+		*dst = *src
+		return
+	}
+
+	// dst has higher (or equal) confidence — merge src evidence into dst
+	dst.Skills = append(dst.Skills, src.Skills...)
+	dst.Files = append(dst.Files, src.Files...)
+	if dst.Version == "" && src.Version != "" {
+		dst.Version = src.Version
+	}
+	if dst.Process == nil && src.Process != nil {
+		dst.Process = src.Process
+	}
+	if dst.Probe == nil && src.Probe != nil {
+		dst.Probe = src.Probe
+	}
+	if dst.Binary == nil && src.Binary != nil {
+		dst.Binary = src.Binary
+	}
+	if dst.Package == nil && src.Package != nil {
+		dst.Package = src.Package
+	}
+	if dst.Extension == nil && src.Extension != nil {
+		dst.Extension = src.Extension
+	}
+	if len(dst.Config) == 0 && len(src.Config) > 0 {
+		dst.Config = src.Config
+	}
+	if dst.SkillDir == "" && src.SkillDir != "" {
+		dst.SkillDir = src.SkillDir
+	}
+
+	// When confidence is equal, prefer an asset type with more evidence
+	if dst.Confidence == src.Confidence {
+		dst.AssetType = preferAssetType(dst.AssetType, src.AssetType)
+	}
+}
+
+// preferAssetType returns the preferred asset type when confidence is equal.
+func preferAssetType(a, b model.AssetType) model.AssetType {
+	rank := map[model.AssetType]int{
+		model.AssetTypeProcess:      6,
+		model.AssetTypeProbe:        5,
+		model.AssetTypeBinary:       4,
+		model.AssetTypePackage:      3,
+		model.AssetTypeFile:         2,
+		model.AssetTypeIDEExtension: 1,
+		model.AssetTypeConfig:       0,
+	}
+	if rank[a] >= rank[b] {
+		return a
+	}
+	return b
 }
 
 func getNestedValue(data map[string]any, path string) any {

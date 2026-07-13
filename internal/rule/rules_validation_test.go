@@ -241,12 +241,11 @@ func TestAgentsYAML_SkillRules(t *testing.T) {
 		}
 		sr := agent.Skills
 
-		if len(sr.ScanPaths) == 0 {
-			t.Errorf("agent %q: skill rule has no scan_paths", agent.Name)
-		}
-
-		if len(sr.Keywords) == 0 {
-			t.Errorf("agent %q: skill rule has no keywords (required for content filtering)", agent.Name)
+		// scan_paths is optional when auto_discover is enabled (default true);
+		// only require it when auto_discover is explicitly disabled.
+		adEnabled := sr.AutoDiscover == nil || *sr.AutoDiscover
+		if !adEnabled && len(sr.ScanPaths) == 0 {
+			t.Errorf("agent %q: skill rule has no scan_paths and auto_discover is disabled", agent.Name)
 		}
 
 		// Check defaults applied
@@ -255,9 +254,6 @@ func TestAgentsYAML_SkillRules(t *testing.T) {
 		}
 		if sr.MaxSizeKB == 0 {
 			t.Errorf("agent %q: skill MaxSizeKB default not applied (got 0)", agent.Name)
-		}
-		if len(sr.Extensions) == 0 {
-			t.Errorf("agent %q: skill Extensions default not applied (got empty)", agent.Name)
 		}
 	}
 }

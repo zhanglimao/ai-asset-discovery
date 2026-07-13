@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/dlclark/regexp2"
@@ -242,11 +241,6 @@ func TestRuleToScanner_SkillRulesDefaults(t *testing.T) {
 			}
 			if sr.MaxSizeKB < 1 {
 				t.Errorf("MaxSizeKB=%d (default should be 100)", sr.MaxSizeKB)
-			}
-			for _, ext := range sr.Extensions {
-				if !strings.HasPrefix(ext, ".") {
-					t.Errorf("extension %q should start with '.'", ext)
-				}
 			}
 		})
 	}

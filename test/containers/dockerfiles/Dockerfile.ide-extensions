@@ -53,6 +53,7 @@ RUN mkdir -p /root/.cursor
 # =========================================================================
 RUN mkdir -p /root/.vscode/extensions/rooveterinaryinc.roo-cline-1.0.0
 RUN echo '{"name":"roo-cline","publisher":"rooveterinaryinc","displayName":"Roo Code","version":"1.0.0","description":"AI coding agent","engines":{"vscode":"^1.80.0"},"categories":["Other"],"keywords":["roo","agent","coding","ai"]}' > /root/.vscode/extensions/rooveterinaryinc.roo-cline-1.0.0/package.json
+RUN mkdir -p /root/.roo-code
 
 # =========================================================================
 # Augment
@@ -73,6 +74,7 @@ RUN mkdir -p /root/.trae/skills
 # =========================================================================
 RUN mkdir -p /root/.vscode/extensions/alibaba.tongyi-lingma-2.0.0
 RUN echo '{"name":"tongyi-lingma","publisher":"alibaba","displayName":"TONGYI Lingma","version":"2.0.0","description":"Alibaba AI coding assistant","engines":{"vscode":"^1.80.0"},"categories":["Machine Learning"],"keywords":["lingma","tongyi","alibaba","agent","ai"]}' > /root/.vscode/extensions/alibaba.tongyi-lingma-2.0.0/package.json
+RUN mkdir -p /root/.lingma
 
 # =========================================================================
 # CodeBuddy (腾讯)

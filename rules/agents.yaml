@@ -16,21 +16,27 @@ agents:
         - "GitHub.copilot"
       binaries:
         - copilot
+    skills:
+      enabled: true
 
   - name: github-copilot-agent
     display_name: "GitHub Copilot Agent"
-    description: "GitHub Copilot with agent mode enabled"
+    description: "GitHub Copilot with agent mode enabled (Copilot Chat extension)"
     category: "ide_extension"
     min_confidence: possible
     paths:
-      - path: ~/.cursor/extensions/GitHub.copilot*
+      - path: ~/.cursor/extensions/GitHub.copilot-chat*
+      - path: ~/.vscode/extensions/GitHub.copilot-chat*
     features:
       extensions:
-        - "GitHub.copilot"
+        - "GitHub.copilot-chat"
       agent_signals:
         - "createAgent"
         - "registerAgent"
         - "tool_use"
+        - "onAgent:copilot"
+    skills:
+      enabled: true
 
   - name: cline
     display_name: "Cline"
@@ -49,11 +55,6 @@ agents:
       enabled: true
       scan_paths:
         - ~/.cline/skills
-      keywords:
-        - skill
-        - description
-        - tool
-        - prompt
 
   - name: continue
     display_name: "Continue"
@@ -72,23 +73,22 @@ agents:
       enabled: true
       scan_paths:
         - ~/.continue/agents
-      keywords:
-        - agent
-        - skill
-        - description
-        - tool
 
   - name: roo-code
     display_name: "Roo Code"
     description: "AI coding agent for VS Code"
     category: "ide_extension"
     min_confidence: possible
+    paths:
+      - path: ~/.roo-code
     features:
       extensions:
         - "rooveterinaryinc.roo-cline"
       agent_signals:
         - agent
         - coding
+    skills:
+      enabled: true
 
   - name: augment
     display_name: "Augment"
@@ -96,12 +96,14 @@ agents:
     category: "ide_extension"
     min_confidence: possible
     paths:
-      - path: ~/.augment/skills
+      - path: ~/.augment
     features:
       extensions:
         - "augment.vscode-augment"
       agent_signals:
         - agent
+    skills:
+      enabled: true
 
   - name: amazon-q-developer
     display_name: "Amazon Q Developer"
@@ -115,6 +117,8 @@ agents:
         - "amazonwebservices.amazon-q-vscode"
       processes:
         - codewhisperer
+    skills:
+      enabled: true
 
   - name: tabnine
     display_name: "Tabnine"
@@ -123,11 +127,15 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.tabnine
+      - path: "%APPDATA%/TabNine"
+        os: windows
     features:
       extensions:
         - "TabNine.tabnine-vscode"
       processes:
         - tabnine
+    skills:
+      enabled: true
 
   - name: sourcegraph-cody
     display_name: "Sourcegraph Cody"
@@ -139,6 +147,8 @@ agents:
     features:
       extensions:
         - "sourcegraph.cody-ai"
+    skills:
+      enabled: true
 
   - name: codebuddy
     display_name: "CodeBuddy (腾讯)"
@@ -150,6 +160,8 @@ agents:
     features:
       extensions:
         - "tencent.codebuddy"
+    skills:
+      enabled: true
 
   - name: qoder
     display_name: "Qoder (阿里)"
@@ -163,15 +175,23 @@ agents:
         - "alibaba.qoder"
       processes:
         - qoder
+    skills:
+      enabled: true
 
   - name: lingma
     display_name: "Lingma (通义灵码)"
     description: "Alibaba Tongyi Lingma coding agent"
     category: "ide_extension"
     min_confidence: possible
+    paths:
+      - path: ~/.lingma
+      - path: "%APPDATA%/Lingma"
+        os: windows
     features:
       extensions:
         - "alibaba.tongyi-lingma"
+    skills:
+      enabled: true
 
   - name: trae
     display_name: "Trae"
@@ -179,10 +199,14 @@ agents:
     category: "ide_extension"
     min_confidence: possible
     paths:
-      - path: ~/.trae/skills
+      - path: ~/.trae
     features:
       extensions:
         - "bytedance.trae"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.trae/skills
 
   # ============================================================
   # CLI Agents (Process + Binary + Package detection)
@@ -216,6 +240,8 @@ agents:
         model: "AIDER_MODEL"
         api_key: "OPENAI_API_KEY"
         editor: "AIDER_EDITOR"
+    skills:
+      enabled: true
 
   - name: claude-code
     display_name: "Claude Code"
@@ -243,11 +269,6 @@ agents:
       scan_paths:
         - ~/.claude/skills
         - ~/.claude-code/skills
-      keywords:
-        - skill
-        - description
-        - tool
-        - prompt
 
   - name: openclaw
     display_name: "OpenClaw"
@@ -264,11 +285,42 @@ agents:
       scan_paths:
         - ~/.openclaw/skills
         - ~/.openclaw/tools
-      keywords:
-        - skill
-        - description
-        - tool
-        - prompt
+
+  - name: hermes-agent
+    display_name: "Hermes Agent"
+    description: "NousResearch self-improving AI agent with built-in learning loop, messaging gateway, and skills system"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.hermes
+      - path: "%LOCALAPPDATA%/hermes"
+        os: windows
+    features:
+      processes:
+        - hermes
+      binaries:
+        - hermes
+      packages:
+        - hermes-agent
+      version_regex: "Hermes Agent v?([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: hermes
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.hermes/skills
+        - "%LOCALAPPDATA%/hermes/skills"
+    config:
+      format: json
+      paths:
+        - ~/.hermes/config.json
+        - "%LOCALAPPDATA%/hermes/config.json"
+      field_map:
+        model: "model"
+        provider: "provider"
 
   - name: gemini-cli
     display_name: "Gemini CLI"
@@ -294,10 +346,6 @@ agents:
       enabled: true
       scan_paths:
         - ~/.gemini/skills
-      keywords:
-        - skill
-        - description
-        - tool
 
   - name: devin
     display_name: "Devin"
@@ -310,6 +358,8 @@ agents:
       processes:
         - devin
         - cognition
+    skills:
+      enabled: true
 
   - name: codex-cli
     display_name: "OpenAI Codex CLI"
@@ -323,6 +373,8 @@ agents:
         - codex
       packages:
         - openai/codex
+    skills:
+      enabled: true
 
   - name: qwen-code
     display_name: "Qwen Code"
@@ -330,38 +382,217 @@ agents:
     category: "cli_agent"
     min_confidence: possible
     paths:
-      - path: ~/.qwen/skills
+      - path: ~/.qwen
     features:
       processes:
         - qwen-code
         - qwen
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.qwen/skills
 
   - name: openhands
     display_name: "OpenHands"
     description: "Open-source AI software dev agent"
     category: "cli_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.openhands
     features:
       processes:
         - openhands
+    skills:
+      enabled: true
 
   - name: goose
     display_name: "Goose"
     description: "AI development agent"
     category: "cli_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.goose
     features:
       processes:
         - goose
+    skills:
+      enabled: true
 
   - name: warp
     display_name: "Warp"
     description: "AI-powered terminal"
     category: "cli_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.warp
+      - path: "%APPDATA%/Warp"
+        os: windows
     features:
       processes:
         - warp
+    skills:
+      enabled: true
+
+  - name: opencode
+    display_name: "OpenCode"
+    description: "Open-source AI coding agent (formerly SST) with desktop app and built-in agents"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.opencode
+      - path: "%APPDATA%/opencode"
+        os: windows
+    features:
+      processes:
+        - opencode
+      binaries:
+        - opencode
+      packages:
+        - opencode-ai
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: opencode
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+
+  - name: reasonix
+    display_name: "Reasonix (DeepSeek)"
+    description: "DeepSeek-native AI coding agent for terminal, config-driven Go binary with plugin system"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.reasonix
+      - path: "%APPDATA%/reasonix"
+        os: windows
+    features:
+      processes:
+        - reasonix
+      binaries:
+        - reasonix
+      packages:
+        - reasonix
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: reasonix
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+
+  - name: kiro
+    display_name: "Kiro (AWS)"
+    description: "AWS agentic IDE and CLI with MCP/ACP/Skills support"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.kiro
+      - path: "%APPDATA%/Kiro"
+        os: windows
+    features:
+      processes:
+        - kiro-cli
+        - kiro
+      binaries:
+        - kiro-cli
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: kiro-cli
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.kiro/skills
+        - "%APPDATA%/Kiro/skills"
+
+  - name: omp
+    display_name: "Oh My Pi (omp)"
+    description: "AI coding agent for the terminal with hash-anchored edits, LSP, debugger, browser, and subagents"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.omp
+      - path: "%APPDATA%/omp"
+        os: windows
+    features:
+      processes:
+        - omp
+      binaries:
+        - omp
+      packages:
+        - "@oh-my-pi/pi-coding-agent"
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: omp
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.omp/skills
+        - "%APPDATA%/omp/skills"
+
+  - name: grok-cli
+    display_name: "Grok CLI"
+    description: "Open-source coding agent for the xAI Grok API with sub-agents, skills, remote control, and sandbox"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.grok
+      - path: "%APPDATA%/grok"
+        os: windows
+    features:
+      processes:
+        - grok
+      binaries:
+        - grok
+      packages:
+        - grok-dev
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: grok
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.grok/skills
+        - .agents/skills
+
+  - name: open-interpreter
+    display_name: "Open Interpreter"
+    description: "Lightweight coding agent for open models (DeepSeek, Kimi, Qwen) with multi-harness emulation"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.openinterpreter
+      - path: "%APPDATA%/openinterpreter"
+        os: windows
+    features:
+      processes:
+        - interpreter
+      binaries:
+        - interpreter
+      packages:
+        - open-interpreter
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: interpreter
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    skills:
+      enabled: true
+      scan_paths:
+        - ~/.openinterpreter/skills
+        - "%APPDATA%/openinterpreter/skills"
 
   # ============================================================
   # Desktop Applications
@@ -389,11 +620,6 @@ agents:
         - ~/Library/Application Support/Claude/skills
         - ~/.config/Claude/skills
         - "%APPDATA%/Claude/skills"
-      keywords:
-        - skill
-        - description
-        - tool
-        - prompt
 
   - name: chatgpt-desktop
     display_name: "ChatGPT Desktop"
@@ -411,6 +637,8 @@ agents:
       processes:
         - chatgpt
         - ChatGPT
+    skills:
+      enabled: true
 
   # ============================================================
   # IDEs with AI capabilities
@@ -422,22 +650,33 @@ agents:
     min_confidence: possible
     paths:
       - path: ~/.cursor
+      - path: ~/Library/Application Support/Cursor
+        os: darwin
+      - path: "%APPDATA%/Cursor"
+        os: windows
     features:
       processes:
         - cursor
       extensions:
         - "cursor"
+    skills:
+      enabled: true
 
   - name: cursor-composer
     display_name: "Cursor Composer"
-    description: "Cursor IDE Composer Agent"
+    description: "Cursor IDE Composer Agent (agent mode enabled)"
     category: "ide_extension"
     min_confidence: possible
-    paths:
-      - path: ~/.cursor
     features:
       extensions:
         - "cursor"
+      agent_signals:
+        - "createAgent"
+        - "composer"
+        - "toolUse"
+        - "agent"
+    skills:
+      enabled: true
 
   - name: windsurf
     display_name: "Windsurf IDE"
@@ -451,6 +690,8 @@ agents:
     features:
       processes:
         - windsurf
+    skills:
+      enabled: true
 
   # ============================================================
   # Desktop & Personal Assistants
@@ -465,33 +706,54 @@ agents:
     features:
       processes:
         - WorkBuddy
+    skills:
+      enabled: true
 
   - name: marvis
     display_name: "Marvis"
     description: "OS-level assistant with multi-expert agent collaboration"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/Library/Application Support/Marvis
+        os: darwin
+      - path: "%APPDATA%/Marvis"
+        os: windows
     features:
       processes:
         - Marvis
+    skills:
+      enabled: true
 
   - name: qclaw
     display_name: "Qclaw"
     description: "Tencent PC Manager privacy-first desktop agent"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.Qclaw
+      - path: "%APPDATA%/Qclaw"
+        os: windows
     features:
       processes:
         - Qclaw
+    skills:
+      enabled: true
 
   - name: qoderwork
     display_name: "QoderWork (阿里)"
     description: "Alibaba office AI agent with self-reflection"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.QoderWork
+      - path: "%APPDATA%/QoderWork"
+        os: windows
     features:
       processes:
         - QoderWork
+    skills:
+      enabled: true
 
   - name: trae-work
     display_name: "TRAE Work"
@@ -503,6 +765,8 @@ agents:
     features:
       processes:
         - TRAE
+    skills:
+      enabled: true
 
   - name: doubao-pro
     display_name: "豆包专业版"
@@ -515,6 +779,8 @@ agents:
       processes:
         - doubao
         - 豆包
+    skills:
+      enabled: true
 
   - name: kimi-work
     display_name: "Kimi Work"
@@ -526,69 +792,113 @@ agents:
     features:
       processes:
         - Kimi
+    skills:
+      enabled: true
 
   - name: dumate
     display_name: "DuMate (百度)"
     description: "Baidu AI information processing agent"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.DuMate
+      - path: "%APPDATA%/DuMate"
+        os: windows
     features:
       processes:
         - DuMate
+    skills:
+      enabled: true
 
   - name: jieyue-ai
     display_name: "阶跃AI"
     description: "StepStar OpenClaw-based desktop agent"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.jieyue
+      - path: "%APPDATA%/jieyue"
+        os: windows
     features:
       processes:
         - jieyue
+    skills:
+      enabled: true
 
   - name: autoclaw
     display_name: "AutoClaw (智谱AI)"
     description: "Zhipu AI desktop agent with 50 skills"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.AutoClaw
+      - path: "%APPDATA%/AutoClaw"
+        os: windows
     features:
       processes:
         - AutoClaw
+    skills:
+      enabled: true
 
   - name: lobsterai
     display_name: "lobsterAI (网易)"
     description: "NetEase phone-PC interop agent"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.lobster
+      - path: "%APPDATA%/lobster"
+        os: windows
     features:
       processes:
         - lobster
+    skills:
+      enabled: true
 
   - name: cola
     display_name: "Cola"
     description: "AI OS with conscious memory"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.Cola
+      - path: "%APPDATA%/Cola"
+        os: windows
     features:
       processes:
         - Cola
+    skills:
+      enabled: true
 
   - name: alice
     display_name: "Alice"
     description: "Personified companion desktop agent"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.Alice
+      - path: "%APPDATA%/Alice"
+        os: windows
     features:
       processes:
         - Alice
+    skills:
+      enabled: true
 
   - name: niuma-ai
     display_name: "牛马AI"
     description: "Local-first privacy offline agent"
     category: "desktop_assistant"
     min_confidence: possible
+    paths:
+      - path: ~/.niuma
+      - path: "%APPDATA%/niuma"
+        os: windows
     features:
       processes:
         - niuma
+    skills:
+      enabled: true
 
   # ============================================================
   # Browser Agents
@@ -598,45 +908,73 @@ agents:
     description: "Autonomous digital worker with browser extension"
     category: "browser_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.manus
+      - path: "%APPDATA%/Manus"
+        os: windows
     features:
       processes:
         - Manus
+    skills:
+      enabled: true
 
   - name: claude-computer-use
     display_name: "Claude Computer Use"
     description: "Anthropic desktop/browser control"
     category: "browser_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.computer-use
     features:
       processes:
         - computer-use
+    skills:
+      enabled: true
 
   - name: fellou
     display_name: "Fellou"
     description: "Agent-native browser"
     category: "browser_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.fellou
+      - path: "%APPDATA%/Fellou"
+        os: windows
     features:
       processes:
         - Fellou
+    skills:
+      enabled: true
 
   - name: genspark
     display_name: "Genspark"
     description: "Browser with 169+ on-device models"
     category: "browser_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.genspark
+      - path: "%APPDATA%/Genspark"
+        os: windows
     features:
       processes:
         - Genspark
+    skills:
+      enabled: true
 
   - name: autoglm
     display_name: "AutoGLM (智谱AI)"
     description: "Cloud device operation agent"
     category: "browser_agent"
     min_confidence: possible
+    paths:
+      - path: ~/.autoglm
+      - path: "%APPDATA%/AutoGLM"
+        os: windows
     features:
       processes:
         - AutoGLM
+    skills:
+      enabled: true
 
   # ============================================================
   # Agent Frameworks (SDK-level detection)
@@ -646,18 +984,30 @@ agents:
     description: "Open-source LLM app dev platform"
     category: "agent_framework"
     min_confidence: possible
+    paths:
+      - path: ~/.dify
+      - path: "%APPDATA%/Dify"
+        os: windows
     features:
       processes:
         - dify
+    skills:
+      enabled: true
 
   - name: coze
     display_name: "扣子 (Coze)"
     description: "ByteDance low-code agent platform"
     category: "agent_framework"
     min_confidence: possible
+    paths:
+      - path: ~/.coze
+      - path: "%APPDATA%/Coze"
+        os: windows
     features:
       processes:
         - coze
+    skills:
+      enabled: true
 
   - name: llm-sdk-detected
     display_name: "LLM SDK (Generic)"
@@ -667,6 +1017,10 @@ agents:
     paths:
       - path: ~/Library/Caches
         os: darwin
+      - path: ~/.cache
+        os: linux
+      - path: "%LOCALAPPDATA%"
+        os: windows
     features:
       processes:
         - langchain
@@ -725,6 +1079,8 @@ agents:
     min_confidence: ghost
     paths:
       - path: ~/.bolt
+    skills:
+      enabled: true
 
   - name: replit-agent
     display_name: "Replit Agent"
@@ -733,21 +1089,35 @@ agents:
     min_confidence: ghost
     paths:
       - path: ~/.replit
+    skills:
+      enabled: true
 
   - name: dingtalk-ai
     display_name: "钉钉AI助理"
     description: "DingTalk collaborative AI assistant"
     category: "agent_framework"
     min_confidence: possible
+    paths:
+      - path: ~/.dingtalk
+      - path: "%APPDATA%/DingTalk"
+        os: windows
     features:
       processes:
         - dingtalk
+    skills:
+      enabled: true
 
   - name: tencent-yuanqi
     display_name: "腾讯元器"
     description: "WeChat ecosystem agent platform"
     category: "agent_framework"
     min_confidence: possible
+    paths:
+      - path: ~/.yuanqi
+      - path: "%APPDATA%/yuanqi"
+        os: windows
     features:
       processes:
         - yuanqi
+    skills:
+      enabled: true

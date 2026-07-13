@@ -21,13 +21,16 @@ RUN ln /bin/sleep /usr/local/bin/WorkBuddy && \
     mkdir -p /root/.workbuddy
 
 # ── Marvis (腾讯应用宝) ────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Marvis
+RUN ln /bin/sleep /usr/local/bin/Marvis && \
+    mkdir -p /root/.Marvis
 
 # ── Qclaw (腾讯电脑管家) ──────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Qclaw
+RUN ln /bin/sleep /usr/local/bin/Qclaw && \
+    mkdir -p /root/.Qclaw
 
 # ── QoderWork (阿里) ──────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/QoderWork
+RUN ln /bin/sleep /usr/local/bin/QoderWork && \
+    mkdir -p /root/.QoderWork
 
 # ── TRAE Work (字节跳动) ──────────────────────────────
 RUN ln /bin/sleep /usr/local/bin/TRAE && \
@@ -42,56 +45,72 @@ RUN ln /bin/sleep /usr/local/bin/Kimi && \
     mkdir -p /root/.kimi
 
 # ── DuMate (百度) ─────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/DuMate
+RUN ln /bin/sleep /usr/local/bin/DuMate && \
+    mkdir -p /root/.DuMate
 
 # ── 阶跃AI ────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/jieyue
+RUN ln /bin/sleep /usr/local/bin/jieyue && \
+    mkdir -p /root/.jieyue
 
 # ── AutoClaw (智谱AI) ─────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/AutoClaw
+RUN ln /bin/sleep /usr/local/bin/AutoClaw && \
+    mkdir -p /root/.AutoClaw
 
 # ── lobsterAI (网易) ──────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/lobster
+RUN ln /bin/sleep /usr/local/bin/lobster && \
+    mkdir -p /root/.lobster
 
 # ── Cola ──────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Cola
+RUN ln /bin/sleep /usr/local/bin/Cola && \
+    mkdir -p /root/.Cola
 
 # ── Alice ─────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Alice
+RUN ln /bin/sleep /usr/local/bin/Alice && \
+    mkdir -p /root/.Alice
 
 # ── 牛马AI ────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/niuma
+RUN ln /bin/sleep /usr/local/bin/niuma && \
+    mkdir -p /root/.niuma
 
 # ── Manus ─────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Manus
+RUN ln /bin/sleep /usr/local/bin/Manus && \
+    mkdir -p /root/.manus
 
 # ── Fellou ─────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Fellou
+RUN ln /bin/sleep /usr/local/bin/Fellou && \
+    mkdir -p /root/.fellou
 
 # ── Genspark ──────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/Genspark
+RUN ln /bin/sleep /usr/local/bin/Genspark && \
+    mkdir -p /root/.genspark
 
 # ── AutoGLM (智谱AI) ─────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/AutoGLM
+RUN ln /bin/sleep /usr/local/bin/AutoGLM && \
+    mkdir -p /root/.autoglm
 
 # ── Dify ──────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/dify
+RUN ln /bin/sleep /usr/local/bin/dify && \
+    mkdir -p /root/.dify
 
 # ── 扣子 (Coze) ───────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/coze
+RUN ln /bin/sleep /usr/local/bin/coze && \
+    mkdir -p /root/.coze
 
 # ── Qwen Code ─────────────────────────────────────────
 RUN ln /bin/sleep /usr/local/bin/qwen && \
     mkdir -p /root/.qwen/skills
 
 # ── OpenHands ─────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/openhands
+RUN ln /bin/sleep /usr/local/bin/openhands && \
+    mkdir -p /root/.openhands
 
 # ── Goose ─────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/goose
+RUN ln /bin/sleep /usr/local/bin/goose && \
+    mkdir -p /root/.goose
 
 # ── Warp ──────────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/warp
+RUN ln /bin/sleep /usr/local/bin/warp && \
+    mkdir -p /root/.warp
 
 # ── Devin ─────────────────────────────────────────────
 RUN ln /bin/sleep /usr/local/bin/devin && \
@@ -105,14 +124,17 @@ RUN ln /bin/sleep /usr/local/bin/codex && \
 RUN ln /bin/sleep /usr/local/bin/tabnine
 
 # ── 腾讯元器 ──────────────────────────────────────────
-RUN ln /bin/sleep /usr/local/bin/yuanqi
+RUN ln /bin/sleep /usr/local/bin/yuanqi && \
+    mkdir -p /root/.yuanqi
 
 # ── 钉钉AI助理 ─────────────────────────────────────────
 # (hardlink name is lowercase "dingtalk" so /proc/PID/comm = "dingtalk")
-RUN ln /bin/sleep /usr/local/bin/dingtalk
+RUN ln /bin/sleep /usr/local/bin/dingtalk && \
+    mkdir -p /root/.dingtalk
 
 # ── Claude Computer Use (browser agent) ───────────────
-RUN ln /bin/sleep /usr/local/bin/computer-use
+RUN ln /bin/sleep /usr/local/bin/computer-use && \
+    mkdir -p /root/.computer-use
 
 # ── Bolt.new (web tool, file detection) ────────────────
 RUN mkdir -p /root/.bolt
