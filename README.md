@@ -82,7 +82,7 @@ CGO_ENABLED=0 go build -o discovery ./cmd/discovery/
         {
           "name": "code-review",
           "description": "Review code changes",
-          "path": "~/.cline/skills/review.md",
+          "file_path": "~/.cline/skills/review.md",
           "tools": ["Bash", "Read", "Edit"],
           "parameters": { "depth": "full" }
         }
@@ -139,9 +139,6 @@ CGO_ENABLED=0 go build -o discovery ./cmd/discovery/
     scan_paths:
       - ~/.claude/skills
       - ~/.claude-code/skills
-    keywords:
-      - skill
-      - tool
     auto_discover: true
 ```
 

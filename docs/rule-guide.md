@@ -22,7 +22,7 @@
 14. [匹配逻辑详解](#匹配逻辑详解)
 15. [路径规范](#路径规范)
 16. [实战案例](#实战案例)
-14. [常见陷阱](#常见陷阱)
+17. [常见陷阱](#常见陷阱)
 
 ---
 
@@ -101,7 +101,7 @@ agents:
 
 ```yaml
 features:
-  processes:                  # 进程名或命令行子串（大小写不敏感 contains 匹配）
+  processes:                  # 进程名或命令行子串（区分大小写 contains 匹配）
     - claude-code
     - "claude code"
   packages:                   # 包管理器中的包名（exact 匹配）
@@ -127,7 +127,7 @@ features:
 | features 字段 | 转换为 | 行为 |
 |---|---|---|
 | `processes` | `process.name_patterns` + `cmd_patterns` | 每个值同时添加到 name 和 cmd，type=contains, weight=5/8 |
-| `packages` | `package.packages` | type=exact, managers 默认 `[pip, npm, apt, brew]` |
+| `packages` | `package.packages` | type=exact, managers 默认 `[pip, pip3, npm, apt, brew]` |
 | `binaries` | `binary.names` | type=exact, version_flag/version_regex 同步转发 |
 | `extensions` | `ide.ext_ids` | 追加到 ext_ids 列表，ide_type 默认 vscode, paths 默认 `~/.cursor/extensions` |
 | `agent_signals` | `ide.agent_signals` | 追加到 agent_signals 列表 |
@@ -228,7 +228,7 @@ process:
 - type: contains
   value: "Claude"
 
-# regex：正则表达式（Go RE2 语法）
+# regex：正则表达式（.NET 兼容正则，支持反向引用、零宽断言等高级特性）
 - type: regex
   value: "^claude(-\w+)?$"
 ```
@@ -267,11 +267,12 @@ process:
 
 ### 关键实现细节
 
-1. **进程名截断**：`/proc/PID/comm` 最多 15 字符，名称可能被截断（如 `python3.11` → `python3`），使用 `regex` 或 `contains` 而非 `exact`
+1. **进程名截断**：`/proc/PID/comm` 最多 15 字符（macOS `ps` 的 `comm` 字段截断 20 字符），名称可能被截断（如 `python3.11` → `python3`），使用 `regex` 或 `contains` 而非 `exact`
 2. **cmdline 空格**：`/proc/PID/cmdline` 用 `\x00` 分隔参数，引擎自动转为空格
 3. **自过滤**：引擎自动排除自身进程（discovery）及其父 Shell
 4. **版本提取**：`version_regex` 使用捕获组 `()` 提取版本号，优先匹配 cmdline，其次匹配 exe 路径
 5. **置信度提升**：≥2 个字段命中时，`ghost` → `possible`，其他 → `confirmed`
+6. **weight 字段**：`PatternRule.Weight` 用于标记各模式的主观重要程度（文档参考），但当前的匹配算法按命中字段数量（≥2）而非权重高低来提升置信度
 
 ---
 
@@ -422,16 +423,12 @@ skills:
   scan_paths:                           # 扫描目录
     - ~/.cline/skills
     - ~/.claude-code/skills
-  keywords:                             # 必需包含的关键词（至少一个）
-    - skill
-    - description
-    - tool
-    - prompt
   max_depth: 3                          # 扫描深度（默认 3）
   max_size_kb: 100                      # 文件大小上限 KB（默认 100）
-  min_size_kb: 1                        # 文件大小下限 KB（默认 1，过滤空文件和极小文件）
   auto_discover: false                  # 设为 false 可关闭自动探测（默认 true）
 ```
+
+> **注意**：技能发现仅识别文件名严格为 `SKILL.md`（大小写不敏感）的文件，按 [Agent Skills 规范](https://agentskills.io/specification) 解析 YAML frontmatter。不支持通过扩展名过滤其他格式。
 
 ### auto_discover 自动探测
 
@@ -447,14 +444,13 @@ skills, agents, tools, instructions, prompts, rules, commands, workflows, .skill
 
 无需在 `scan_paths` 中逐一列举，大幅简化规则维护。auto_discover 不会重复扫描已在 `scan_paths` 中显式配置的路径。
 
-### 技能文件格式支持
+### 技能文件格式
 
-| 扩展名 | 格式 | 解析方式 |
-|--------|------|----------|
-| `.md` | Markdown（支持 YAML frontmatter） | frontmatter 优先 → 段落标题回退 |
-| `.yaml` / `.yml` | YAML | `yaml.Unmarshal` 到 Skill 结构 |
-| `.json` | JSON | `json.Unmarshal` 到 Skill 结构 |
-| `.toml` | TOML | 简易解析器 |
+技能发现按 [Agent Skills 规范](https://agentskills.io/specification) 工作：
+
+- **文件名**：仅识别 `SKILL.md`（大小写不敏感）
+- **格式**：Markdown + YAML frontmatter（`---` 包裹的 YAML）
+- **回退**：如无 frontmatter，从 Markdown 标题段落提取 name/description/tools/prompt
 
 ### Markdown 技能文件格式
 
@@ -487,11 +483,9 @@ Frontmatter 中 `---` 包裹的 YAML 会被自动解析并映射到 Skill 结构
 | `enabled` | `false` |
 | `max_depth` | `3` |
 | `max_size_kb` | `100` |
-| `min_size_kb` | `1` |
-| `extensions` | `[".md", ".yaml", ".yml", ".json", ".toml"]` |
 | `auto_discover` | `true` |
 
-> **注意**：`enabled` 默认为 `false`，必须显式设为 `true` 才会激活技能扫描。技能扫描会读取文件内容（最大 `max_size_kb` KB），忽略小于 `min_size_kb` KB 的文件以减少误报。
+> **注意**：`enabled` 默认为 `false`，必须显式设为 `true` 才会激活技能扫描。技能扫描会读取文件内容（最大 `max_size_kb` KB）。
 
 ---
 
@@ -511,8 +505,10 @@ package:
       type: exact               # exact | regex
     - name: "aider-chat"
       type: exact
-  version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"  # 可选：版本号提取正则
+  version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"  # 可选：从包版本字符串中提取版本号
 ```
+
+> **`version_regex`**：当包管理器返回的版本字符串格式不标准时（如 `"v1.2.3"`），可用此正则的捕获组提取干净版本号。
 
 ### 支持的包管理器
 
@@ -550,14 +546,18 @@ binary:
       value: "claude"                   # which claude
     - type: contains
       value: "aider"                    # 部分匹配
+    - type: regex
+      value: "^gemini(-cli)?$"          # 正则匹配（遍历 PATH 目录）
   version_flag: "--version"             # 版本查询标志
   version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"  # 版本号提取正则
 ```
 
+> **`regex` 模式**：当 `type: regex` 时，扫描器会遍历 `$PATH` 中所有目录，用正则匹配文件名（而非调用 `exec.LookPath`）。适用于二进制名不确定的场景（如 `python3.10` vs `python3.11`）。
+
 ### 工作流程
 
-1. 对每个 `names` 模式调用 `exec.LookPath(value)` 查找二进制
-2. 对 regex 类型，遍历 `$PATH` 所有目录进行文件名匹配
+1. 对 `exact` / `contains` 类型调用 `exec.LookPath(value)` 查找二进制
+2. 对 `regex` 类型，遍历 `$PATH` 所有目录进行文件名匹配
 3. 找到后执行 `<binary> <version_flag>` 获取版本输出
 4. 用 `version_regex` 捕获组提取版本号
 
@@ -690,9 +690,6 @@ ide:
     scan_paths:
       - ~/.claude/skills
       - ~/.claude-code/skills
-    keywords:
-      - skill
-      - tool
     auto_discover: true
 ```
 
@@ -775,7 +772,7 @@ ide:
 
 **要点**：
 - `paths` 使用 `os` 字段分别指定各平台路径
-- `features.processes` 同时匹配进程名和命令行，大小写不敏感
+- `features.processes` 同时匹配进程名和命令行，区分大小写
 - 引擎自动过滤自身进程和 Shell 包装器，无需 `exe_patterns` 排除逻辑
 
 ---

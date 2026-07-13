@@ -85,7 +85,7 @@
 - **职责**：扫描编排器
 - **核心方法**：
   - `LoadRules(path)` — 从文件/目录加载 YAML 规则
-  - `Run()` — 执行 8 阶段扫描流水线
+  - `Run()` — 执行 9 阶段扫描流水线
   - `populateSummary()` — 生成统计摘要
   - `deduplicateAgents()` — 按 name + asset_type 去重合并
   - `LoadRulesFromBytes(data)` — 直接从 YAML 字节加载规则
@@ -93,8 +93,8 @@
 
 ### `internal/scanner/process.go`（+ `process_linux.go` / `process_darwin.go` / `process_windows.go`）
 - **职责**：跨平台进程扫描
-- **Linux**：遍历 `/proc/[0-9]+/` 目录，读取 comm / cmdline / exe / cwd / status
-- **macOS**：执行 `ps -eo pid,ppid,user,comm,args` 解析进程列表
+- **Linux**：遍历 `/proc/[0-9]+/` 目录，读取 comm / cmdline / exe / cwd / status（进程名截断 15 字符）
+- **macOS**：执行 `ps -eo pid,ppid,user,comm,args` 解析进程列表（进程名截断 20 字符，无 cwd/exe）
 - **Windows**：通过 Windows API 枚举进程
 - **核心逻辑**：
   - `listProcesses()` — 平台特定实现，返回进程列表
@@ -149,12 +149,12 @@
 - **匹配优先级**：exact ID > keywords > dependencies
 
 ### `internal/skill/discoverer.go`
-- **职责**：发现和解析 Agent 技能文件
+- **职责**：发现和解析 Agent 技能文件（仅限 SKILL.md）
 - **核心逻辑**：
   - `DiscoverSkillsWithProbe(rule, fileDirs)` — 两阶段扫描：先扫显式 scan_paths，再根据 auto_discover 探测定向子目录
   - `ProbeSkillDirs(fileDirs)` — 在文件证据目录下探测 skills/agents/tools/instructions/prompts 等子目录
-  - `scanPath(root, rule)` — `filepath.WalkDir` 遍历，按扩展名/大小/深度过滤
-  - `parseSkillFile(path, ext)` — 按格式分发到 Markdown/YAML/JSON/TOML 解析器
+  - `scanPath(root, rule)` — `filepath.WalkDir` 遍历，按文件名（仅 SKILL.md）和大小/深度过滤
+  - `parseSkillFile(path)` — 解析 SKILL.md 文件（YAML frontmatter + Markdown）
 - **auto_discover 行为**：当规则设置 `auto_discover: true` 时，引擎会自动在 Agent 的文件证据目录（如 `~/.cline`）下探测 `skills`、`agents`、`tools`、`instructions`、`prompts` 等子目录，无需在 `scan_paths` 中逐一列举
 
 ### `internal/rule/loader.go`
@@ -166,7 +166,7 @@
 - **规则标准化**：
   - `normalizeFeatures(rule)` — 将简化语法 `features`（`processes`/`packages`/`binaries`/`extensions`/`agent_signals`）自动转换为 legacy 详细字段（`process`/`package`/`binary`/`ide`）
   - `normalizePaths(rule)` — 将简化语法 `paths` 转换为 legacy `files` 规则
-- **默认值注入**：`min_confidence` → `possible`；`match_logic` → `or`；`max_depth` → `3`；`max_size_kb` → `100`；`extensions` → `[".md", ".yaml", ".yml", ".json", ".toml"]`
+- **默认值注入**：`min_confidence` → `possible`；`match_logic` → `or`；`max_depth` → `3`；`max_size_kb` → `100`；`skills.auto_discover` → `true`
 
 ### `internal/config/config.go`
 - **职责**：跨平台路径解析和 OS 判断
@@ -258,7 +258,7 @@ Result
 
 ## 扫描流程
 
-### 八阶段扫描流水线
+### 九阶段扫描流水线
 
 ```
 ┌──────────────┐
@@ -294,16 +294,20 @@ Result
 │              │  Phase 2: auto_discover 探测定向子目录
 └──────┬───────┘
        │
-┌──────▼───────┐
-│ 7. 包管理器   │  npm list / pip list / apt list →
-│              │  匹配 package name patterns → 版本提取
-└──────┬───────┘
+┌────────────────────────────────────────────────┐
+│ 7. 包管理器扫描  │  npm list / pip list / apt list →
+│                  │  匹配 package name patterns → 版本提取
+└──────┬───────────┘
        │
-┌──────▼───────┐
-│ 8. 二进制+探测│  which <name> → --version → 版本提取
-│              │  probe command → expected_output 验证 → 版本提取
-│              │  deduplicateAgents → populateSummary
-└──────────────┘
+┌──────▼───────────┐
+│ 8. 二进制扫描     │  which <name> → --version → 版本提取
+└──────┬───────────┘
+       │
+┌──────▼───────────┐
+│ 9. 命令探测      │  probe command → expected_output 验证 →
+│                  │  版本提取 → deduplicateAgents →
+│                  │  mergeCrossType → populateSummary
+└──────────────────┘
 ```
 
 ### 进程匹配详细流程
@@ -378,7 +382,12 @@ Result
          ▼
 ┌─────────────────────────────┐
 │ checkAgentCapability(ext, rule)│
-│   读取 package.json 原始内容  │
+│   读取 package.json 清单      │
+│   检查 activationEvents       │
+│   检查 contributes.agent      │
+│   检查 manifest.Main 路径     │
+│   检查 agent 特有目录         │
+│   读取扩展入口 .js 文件       │
 │   搜索 agent_signals 字符串   │
 │   命中 → confidence=confirmed │
 └─────────────────────────────┘
@@ -399,6 +408,9 @@ sequenceDiagram
     participant FS as scanner.FileScanner
     participant IDE as ide.Scanner
     participant SK as skill.Discoverer
+    participant Pkg as scanner.PackageScanner
+    participant Bin as scanner.BinaryScanner
+    participant Probe as scanner.ProbeScanner
     participant Config as config (ExpandPath)
 
     CLI->>Engine: NewEngine()
@@ -459,8 +471,34 @@ sequenceDiagram
         SK-->>Engine: []Skill
     end
 
+    Note over Engine: Phase 6: Package Scan
+    Engine->>Pkg: Scan(rules)
+    loop For each rule with Package
+        Pkg->>Pkg: exec.Command(npm/pip/apt/brew list)
+        Pkg->>Pkg: parse output → match patterns
+    end
+    Pkg-->>Engine: []DiscoveredAgent (package type)
+
+    Note over Engine: Phase 7: Binary Scan
+    Engine->>Bin: Scan(rules)
+    loop For each rule with Binary
+        Bin->>Bin: exec.LookPath(name) / findInPath
+        Bin->>Bin: exec --version → version extract
+    end
+    Bin-->>Engine: []DiscoveredAgent (binary type)
+
+    Note over Engine: Phase 8: Probe Scan
+    Engine->>Probe: Scan(rules)
+    loop For each rule with Probe
+        Probe->>Probe: exec probe command
+        Probe->>Probe: expected_output validation
+        Probe->>Probe: version extract
+    end
+    Probe-->>Engine: []DiscoveredAgent (probe type)
+
     Note over Engine: Post-processing
     Engine->>Engine: deduplicateAgents (name:asset_type)
+    Engine->>Engine: mergeCrossType (cross-type merge)
     Engine->>Engine: populateSummary (stats)
 
     Engine-->>CLI: Result (Summary + Agents[])
@@ -474,7 +512,7 @@ sequenceDiagram
     participant E as Engine
     participant Map as dedupMap[name:type]
 
-    E->>E: 收集 Phase 1-3 所有 agents
+    E->>E: 收集 Phase 1-8 所有 agents
     loop For each agent
         E->>Map: key = name + ":" + asset_type
         alt key already exists
@@ -497,7 +535,7 @@ sequenceDiagram
 sequenceDiagram
     participant IDE as ide.Scanner
     participant FS as 文件系统
-    participant Ext as package.json
+    participant Ext as 扩展 main 入口
 
     IDE->>FS: ReadDir(~/.vscode/extensions)
     FS-->>IDE: []DirEntry
@@ -520,9 +558,11 @@ sequenceDiagram
         end
 
         IDE->>IDE: checkAgentCapability(ext, rule)
-        IDE->>FS: ReadFile(package.json) again (raw)
-        FS-->>IDE: raw JSON bytes
-        IDE->>IDE: strings.Contains(raw, signal)
+        IDE->>FS: ReadFile(manifest.Main) (扩展主入口 .js 文件)
+        FS-->>IDE: 入口文件内容
+        IDE->>IDE: strings.Contains(content, signal)
+        Note over IDE: 同时检查 activationEvents/contributes.agent
+        Note over IDE: 以及 agent 特有目录（skills/.cline 等）
         alt agent signal found
             IDE->>IDE: confidence = "confirmed"
         end
@@ -553,8 +593,11 @@ sequenceDiagram
 
 ### 添加新的技能文件格式
 
-1. 在 `internal/skill/discoverer.go` 的 `parseSkillFile()` 中添加新扩展名
-2. 实现 `parseXXXSkill(path, data)` 函数
+技能发现目前仅支持 [Agent Skills 规范](https://agentskills.io/specification) 的 `SKILL.md` 格式（含 YAML frontmatter 的 Markdown 文件）。如需添加新格式支持：
+
+1. 在 `internal/skill/discoverer.go` 的 `scanPath()` 中添加新的文件名匹配逻辑
+2. 在 `parseSkillFile()` 中实现新格式的解析分支
+3. 更新 `internal/model/types.go` 中 `Skill` 结构体（如需要新字段）
 
 ### 添加新的匹配类型
 
