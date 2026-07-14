@@ -4,11 +4,44 @@ package scanner
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/ai-asset-discovery/internal/model"
 )
+
+// usernameCache avoids repeated os/user.LookupId calls for the same UID.
+var (
+	usernameCacheMu sync.RWMutex
+	usernameCache   = map[string]string{}
+)
+
+// resolveUID maps a numeric UID to a username.
+func resolveUID(uid string) string {
+	if uid == "" || uid == "0" && os.Geteuid() != 0 {
+		return "root"
+	}
+
+	usernameCacheMu.RLock()
+	if name, ok := usernameCache[uid]; ok {
+		usernameCacheMu.RUnlock()
+		return name
+	}
+	usernameCacheMu.RUnlock()
+
+	u, err := user.LookupId(uid)
+	if err != nil {
+		return uid // fallback to numeric
+	}
+	name := u.Username
+
+	usernameCacheMu.Lock()
+	usernameCache[uid] = name
+	usernameCacheMu.Unlock()
+	return name
+}
 
 // listProcesses reads /proc on Linux.
 func (ps *ProcessScanner) listProcesses() ([]model.ProcessInfo, error) {
@@ -68,7 +101,7 @@ func (ps *ProcessScanner) readProc(pid int) *model.ProcessInfo {
 	// Read status for PPID and UID
 	statusBytes, err := os.ReadFile(base + "/status")
 	var ppid int
-	user := "unknown"
+	uid := ""
 	if err == nil {
 		for _, line := range strings.Split(string(statusBytes), "\n") {
 			if strings.HasPrefix(line, "PPid:") {
@@ -77,11 +110,13 @@ func (ps *ProcessScanner) readProc(pid int) *model.ProcessInfo {
 			if strings.HasPrefix(line, "Uid:") {
 				parts := strings.Fields(line)
 				if len(parts) >= 2 {
-					user = parts[1]
+					uid = parts[1]
 				}
 			}
 		}
 	}
+
+	userName := resolveUID(uid)
 
 	return &model.ProcessInfo{
 		PID:        pid,
@@ -90,6 +125,6 @@ func (ps *ProcessScanner) readProc(pid int) *model.ProcessInfo {
 		CWD:        cwd,
 		Executable: exe,
 		PPID:       ppid,
-		User:       user,
+		User:       userName,
 	}
 }

@@ -43,6 +43,17 @@ var doubleBraceResolvers = map[string]func() (string, error){
 		}
 		return v, nil
 	},
+	"LocalAppData": func() (string, error) {
+		v := os.Getenv("LOCALAPPDATA")
+		if v == "" && runtime.GOOS == "windows" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			v = filepath.Join(home, "AppData", "Local")
+		}
+		return v, nil
+	},
 }
 
 func expandDoubleBraces(s string) string {

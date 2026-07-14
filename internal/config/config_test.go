@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -147,4 +148,42 @@ func TestIsWindows(t *testing.T) {
 	if runtime.GOOS == "windows" && !IsWindows() {
 		t.Error("IsWindows() should be true on Windows")
 	}
+}
+
+func TestExpandPath_LocalAppData(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("{{AppData}} / {{LocalAppData}} are Windows-oriented; skip on non-Windows")
+	}
+
+	// {{AppData}}
+	result, err := ExpandPath("{{AppData}}/test/app")
+	if err != nil {
+		t.Fatalf("ExpandPath({{AppData}}) error: %v", err)
+	}
+	if !strings.Contains(result, "AppData") {
+		t.Errorf("ExpandPath({{AppData}}) = %q, expected to contain AppData", result)
+	}
+
+	// {{LocalAppData}}
+	result2, err := ExpandPath("{{LocalAppData}}/test/app")
+	if err != nil {
+		t.Fatalf("ExpandPath({{LocalAppData}}) error: %v", err)
+	}
+	// Should resolve to something with Local or AppData in path
+	if !strings.Contains(result2, "AppData") && !strings.Contains(result2, "Local") {
+		t.Errorf("ExpandPath({{LocalAppData}}) = %q, expected to contain Local or AppData", result2)
+	}
+}
+
+func TestExpandPath_LocalAppData_NonWindowsFallback(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves {{LocalAppData}} from env; test non-Windows fallback")
+	}
+
+	// On non-Windows with LOCALAPPDATA unset, {{LocalAppData}} should not error
+	result, err := ExpandPath("{{LocalAppData}}/test/app")
+	if err != nil {
+		t.Fatalf("ExpandPath({{LocalAppData}}) should not error on non-Windows: %v", err)
+	}
+	t.Logf("ExpandPath({{LocalAppData}}/test/app) on %s = %q", runtime.GOOS, result)
 }

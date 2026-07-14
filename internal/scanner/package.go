@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dlclark/regexp2"
 
@@ -137,17 +138,65 @@ func (ps *PackageScanner) listPackages(mgr PackageManager) []pkgInfo {
 }
 
 func (ps *PackageScanner) parseNPMList(output string) []pkgInfo {
-	// npm list -g --depth=0 --json returns JSON, but we handle plain text too
-	// For JSON, we do a simple parse of "from" or "name":"..." fields
+	// npm list -g --depth=0 --json produces JSON output.
+	// Try JSON first, then fall back to tree-view format.
+
+	// ── JSON format ──
+	if pkgs := parseNPMJSON(output); len(pkgs) > 0 {
+		return pkgs
+	}
+
+	// ── Tree-view format ──
+	// Lines look like:
+	//   ├── @scope/package@1.2.3
+	//   └── package@1.2.3
 	var pkgs []pkgInfo
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "├── ") || strings.HasPrefix(line, "└── ") {
-			parts := strings.SplitN(line[4:], "@", 2)
-			if len(parts) == 2 {
-				pkgs = append(pkgs, pkgInfo{Name: parts[0], Version: parts[1]})
-			}
+		// Strip Unicode tree-drawing prefix (├──  or └── ).
+		// Use TrimLeft with rune set because the prefix contains multi-byte characters.
+		const treeChars = "├─└─│ "
+		// Check first rune for tree-drawing chars (not first byte — these are multi-byte UTF-8).
+		first, _ := utf8.DecodeRuneInString(line)
+		if first != '├' && first != '└' {
+			continue
+		}
+		rest := strings.TrimLeft(line, treeChars)
+		// Find the last @ — version never contains @.
+		lastAt := strings.LastIndex(rest, "@")
+		if lastAt >= 0 && lastAt < len(rest)-1 {
+			pkgs = append(pkgs, pkgInfo{
+				Name:    rest[:lastAt],
+				Version: rest[lastAt+1:],
+			})
+		}
+	}
+	return pkgs
+}
+
+// parseNPMJSON parses `npm list --json` output.
+// The JSON shape is { "dependencies": { "pkg": { "version": "..." }, ... } }.
+func parseNPMJSON(output string) []pkgInfo {
+	// Quick heuristic: JSON starts with { or [.
+	trimmed := strings.TrimSpace(output)
+	if len(trimmed) == 0 || (trimmed[0] != '{' && trimmed[0] != '[') {
+		return nil
+	}
+
+	var root struct {
+		Dependencies map[string]struct {
+			Version string `json:"version"`
+		} `json:"dependencies"`
+	}
+	if err := json.Unmarshal([]byte(trimmed), &root); err != nil {
+		return nil
+	}
+
+	pkgs := make([]pkgInfo, 0, len(root.Dependencies))
+	for name, dep := range root.Dependencies {
+		if name != "" {
+			pkgs = append(pkgs, pkgInfo{Name: name, Version: dep.Version})
 		}
 	}
 	return pkgs

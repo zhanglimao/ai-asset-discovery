@@ -172,15 +172,6 @@ agents:
           label: "VS Code OSS"
         - path: "~/.cursor/extensions"
           label: "Cursor"
-        - path: "~/.local/share"
-          label: "JetBrains (Linux)"
-          os: linux
-        - path: "~/Library/Application Support"
-          label: "JetBrains (macOS)"
-          os: darwin
-        - path: "%APPDATA%"
-          label: "JetBrains (Windows)"
-          os: windows
     features:
       extensions:
         - "amazonwebservices.amazon-q-vscode"
@@ -206,15 +197,6 @@ agents:
           label: "VS Code OSS"
         - path: "~/.cursor/extensions"
           label: "Cursor"
-        - path: "~/.local/share"
-          label: "JetBrains (Linux)"
-          os: linux
-        - path: "~/Library/Application Support"
-          label: "JetBrains (macOS)"
-          os: darwin
-        - path: "%APPDATA%"
-          label: "JetBrains (Windows)"
-          os: windows
     features:
       extensions:
         - "TabNine.tabnine-vscode"
@@ -238,15 +220,6 @@ agents:
           label: "VS Code OSS"
         - path: "~/.cursor/extensions"
           label: "Cursor"
-        - path: "~/.local/share"
-          label: "JetBrains (Linux)"
-          os: linux
-        - path: "~/Library/Application Support"
-          label: "JetBrains (macOS)"
-          os: darwin
-        - path: "%APPDATA%"
-          label: "JetBrains (Windows)"
-          os: windows
     features:
       extensions:
         - "sourcegraph.cody-ai"
@@ -314,15 +287,6 @@ agents:
           label: "VS Code OSS"
         - path: "~/.cursor/extensions"
           label: "Cursor"
-        - path: "~/.local/share"
-          label: "JetBrains (Linux)"
-          os: linux
-        - path: "~/Library/Application Support"
-          label: "JetBrains (macOS)"
-          os: darwin
-        - path: "%APPDATA%"
-          label: "JetBrains (Windows)"
-          os: windows
     features:
       extensions:
         - "alibaba.tongyi-lingma"
