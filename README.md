@@ -170,7 +170,7 @@ CGO_ENABLED=0 go build -o discovery ./cmd/discovery/
 │   │   ├── binary.go            # PATH 二进制扫描器
 │   │   └── probe.go             # 命令探测扫描器
 │   ├── skill/discoverer.go      # Skill 发现器
-│   ├── platform/paths.go        # 平台路径自动发现
+│   ├── platform/paths.go        # 平台路径工具函数
 ├── rules/agents.yaml            # 检测规则（50+ Agent）
 └── test/containers/             # Docker 容器化端到端测试
     ├── run-tests.sh

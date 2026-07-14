@@ -40,13 +40,8 @@ func (bs *BinaryScanner) scanBinaryRule(rule model.AgentRule) []model.Discovered
 	for _, pp := range br.Names {
 		candidate := pp.Value
 
-		// Try LookPath first for exact or contains patterns
-		binaryPath, err := exec.LookPath(candidate)
-		if err != nil {
-			continue
-		}
-
-		// For regex patterns, walk PATH directories
+		// For regex patterns, walk PATH directories to find matches.
+		// Regex patterns can't be used with exec.LookPath.
 		if pp.Type == "regex" {
 			found := bs.findInPath(pp)
 			for _, fp := range found {
@@ -56,7 +51,11 @@ func (bs *BinaryScanner) scanBinaryRule(rule model.AgentRule) []model.Discovered
 			continue
 		}
 
-		// For exact and contains, we already found it via LookPath
+		// Try LookPath for exact or contains patterns
+		binaryPath, err := exec.LookPath(candidate)
+		if err != nil {
+			continue
+		}
 		absPath, _ := filepath.Abs(binaryPath)
 		agent := bs.buildAgent(rule, absPath, br)
 		results = append(results, agent)

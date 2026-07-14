@@ -129,7 +129,7 @@ features:
 | `processes` | `process.name_patterns` + `cmd_patterns` | 每个值同时添加到 name 和 cmd，type=contains, weight=5/8 |
 | `packages` | `package.packages` | type=exact, managers 默认 `[pip, pip3, npm, apt, brew]` |
 | `binaries` | `binary.names` | type=exact, version_flag/version_regex 同步转发 |
-| `extensions` | `ide.ext_ids` | 追加到 ext_ids 列表，ide_type 默认 vscode, paths 默认 `~/.cursor/extensions` |
+| `extensions` | `ide.ext_ids` | 追加到 ext_ids 列表（需配合 `ide.scan_paths` 指定扫描目录） |
 | `agent_signals` | `ide.agent_signals` | 追加到 agent_signals 列表 |
 | `version_regex` | `process.version_regex` + `binary.version_regex` | 同时设置到 process 和 binary |
 
@@ -360,10 +360,12 @@ IDE 扫描器采用**分层匹配**：
 
 ### 扩展 ID 说明
 
-扩展 ID 格式为 `publisher.extension`，从扩展目录名中提取：
+扩展 ID 格式为 `publisher.extension`，从扩展目录下的 `package.json` 中读取 `publisher` 和 `name` 字段拼接而成（如 `GitHub.copilot`），并非从目录名提取：
 ```
 ~/.vscode/extensions/github.copilot-1.2.3/
-                        ^^^^^^^^^^^^^^--- 扩展ID
+                        ├── package.json    → publisher: "GitHub", name: "copilot"
+                        └── ...
+                                       → 扩展ID = "GitHub.copilot"
 ```
 
 ---
@@ -573,9 +575,9 @@ binary:
 
 ### 置信度提升规则
 
-1. **进程检测**：单个字段命中 → `min_confidence`；≥2 个字段命中 → 自动提升
+1. **进程检测**：单个字段命中 → `min_confidence`；≥2 个字段命中时：原置信度为 `ghost` → 提升至 `possible`；原置信度为其他值 → 提升至 `confirmed`
 2. **IDE 扩展检测**：命中 `agent_signals` → 自动提升至 `confirmed`
-3. **综合**：最终按各维度中最高置信度取值
+3. **综合**：最终按各维度中最高置信度取值（跨类型合并时保留最高置信度）
 
 ---
 

@@ -45,7 +45,7 @@ type AgentRule struct {
 // FeaturesRule describes agent fingerprints using plain string lists.
 // The engine internally handles matching — rules only say WHAT to look for.
 type FeaturesRule struct {
-	// Process names or cmdline substrings to match (case-insensitive contains).
+	// Process names or cmdline substrings to match (case-sensitive contains).
 	// Matches against both process name and full command line.
 	Processes []string `yaml:"processes,omitempty" json:"processes,omitempty"`
 

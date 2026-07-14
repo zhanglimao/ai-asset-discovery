@@ -53,7 +53,10 @@
     │ scanner/      │ │    │    │  扫描层
     │ process.go    ├─┘    │    │
     │ filesystem.go ├──────┘    │
-    └───────────────┘           │
+    │ package.go    ├───────────┘
+    │ binary.go     │
+    │ probe.go      │
+    └───────────────┘
     ┌───────────────────────────▼──┐
     │ ide/scanner.go               │
     └──────────────────────────────┘
@@ -68,6 +71,7 @@
     ┌────────────▼──────────────┐
     │ rule/loader.go            │  配置层
     │ config/config.go          │
+    │ platform/paths.go         │
     └───────────────────────────┘
 ```
 
@@ -85,9 +89,10 @@
 - **职责**：扫描编排器
 - **核心方法**：
   - `LoadRules(path)` — 从文件/目录加载 YAML 规则
-  - `Run()` — 执行 9 阶段扫描流水线
+  - `Run()` — 执行 8 阶段扫描流水线 + 后处理（去重合并）
   - `populateSummary()` — 生成统计摘要
   - `deduplicateAgents()` — 按 name + asset_type 去重合并
+  - `mergeCrossType()` — 跨 asset_type 合并同 name 的多条证据
   - `LoadRulesFromBytes(data)` — 直接从 YAML 字节加载规则
 - **依赖**：所有 Scanner、Loader、Discoverer
 
@@ -134,11 +139,12 @@
 - **输出截断**：命令输出截断至 500 字符
 
 ### `internal/platform/paths.go`
-- **职责**：平台感知的 IDE 扩展目录自动发现
+- **职责**：平台感知的运行时路径工具函数
 - **核心函数**：
+  - `CurrentOS()` — 返回当前操作系统标识（`linux`、`darwin`、`windows`）
   - `AppConfigDir(appName)` — 返回平台标准的应用配置目录（Linux: `~/.config/`，macOS: `~/Library/Application Support/`，Windows: `%APPDATA%`）
-  - `ExtensionsDirs(ide)` — 返回指定 IDE 在各平台的扩展安装目录
-  - 支持 IDE 类型：vscode、cursor、windsurf
+  - `AppHomeDir(appName)` — 返回平台标准的应用 home 目录（所有平台: `~/.<appName>`）
+- **注意**：所有 IDE 扩展路径发现已迁移到 YAML 规则中的 `ide.scan_paths` 字段，不再由 Go 代码硬编码
 
 ### `internal/ide/scanner.go`
 - **职责**：扫描 VS Code / Cursor 等 IDE 的扩展目录
@@ -258,7 +264,7 @@ Result
 
 ## 扫描流程
 
-### 九阶段扫描流水线
+### 八阶段扫描流水线
 
 ```
 ┌──────────────┐
@@ -274,40 +280,49 @@ Result
 ┌──────▼───────┐
 │ 3. 文件扫描   │  对每条规则 matchFiles() →
 │              │  ExpandPath → 检查存在性 → required 校验 →
-│              │  contains 内容检查
+│              │  contains 内容检查 → max_depth 目录递归
 └──────┬───────┘
        │
 ┌──────▼───────┐
 │ 4. IDE 扫描  │  对每条规则 scanIDERule() →
-│              │  平台自动发现扩展目录 → 读取 package.json →
+│              │  按 rule.scan_paths 遍历扩展目录 → 读取 package.json →
 │              │  ext_ids 匹配 → keywords 匹配 → agent_signals 检测
 └──────┬───────┘
        │
 ┌──────▼───────┐
-│ 5. 配置提取   │  extractAgentConfigs() →
+│ 5. 版本补全   │  将 Extension.Version 复制到 Agent.Version
+└──────┬───────┘
+       │
+┌──────▼───────┐
+│ 6. 配置提取   │  extractAgentConfigs() →
 │              │  读取配置文件 → 按 format 解析 → field_map 提取
 └──────┬───────┘
        │
 ┌──────▼───────┐
-│ 6. 技能发现   │  discoverSkillsWithProbe() →
+│ 7. 技能发现   │  discoverSkillsWithProbe() →
 │              │  Phase 1: 显式 scan_paths 扫描 →
 │              │  Phase 2: auto_discover 探测定向子目录
 └──────┬───────┘
        │
 ┌────────────────────────────────────────────────┐
-│ 7. 包管理器扫描  │  npm list / pip list / apt list →
+│ 8. 包管理器扫描  │  npm list / pip list / apt list →
 │                  │  匹配 package name patterns → 版本提取
 └──────┬───────────┘
        │
 ┌──────▼───────────┐
-│ 8. 二进制扫描     │  which <name> → --version → 版本提取
+│ 9. 二进制扫描     │  which <name> → --version → 版本提取
 └──────┬───────────┘
        │
 ┌──────▼───────────┐
-│ 9. 命令探测      │  probe command → expected_output 验证 →
-│                  │  版本提取 → deduplicateAgents →
-│                  │  mergeCrossType → populateSummary
-└──────────────────┘
+│ 10. 命令探测     │  probe command → expected_output 验证 →
+│                  │  版本提取
+└──────┬───────────┘
+       │
+┌──────▼───────────────────────────┐
+│ 后处理：去重 + 跨类型合并 + 汇总    │
+│ deduplicateAgents → mergeCrossType │
+│ → populateSummary                  │
+└──────────────────────────────────┘
 ```
 
 ### 进程匹配详细流程
@@ -341,11 +356,15 @@ Result
 │     → 任一命中 → 匹配成功    │
 │   match_logic = "and"       │
 │     → 全部命中 → 匹配成功    │
+│   未配置的字段视为通过        │
 │                              │
 │   置信度提升：                │
-│     ≥2匹配 → ghost→possible  │
-│     ≥2匹配 → possible→confirmed│
+│     ≥2 字段命中 + ghost     │
+│        → possible            │
+│     ≥2 字段命中 + 非 ghost  │
+│        → confirmed           │
 │   版本提取：version_regex    │
+│    优先 cmdline，其次 exe    │
 └────────────────────────────┘
 ```
 
@@ -562,7 +581,7 @@ sequenceDiagram
         FS-->>IDE: 入口文件内容
         IDE->>IDE: strings.Contains(content, signal)
         Note over IDE: 同时检查 activationEvents/contributes.agent
-        Note over IDE: 以及 agent 特有目录（skills/.cline 等）
+        Note over IDE: 以及 agent 特有目录（skills/tools/.cline 等）
         alt agent signal found
             IDE->>IDE: confidence = "confirmed"
         end
@@ -581,10 +600,11 @@ sequenceDiagram
 
 ### 添加新的扫描器
 
-1. 在 `internal/scanner/` 或新建包中实现 Scanner 接口
-2. 在 `internal/discovery/engine.go` 的 `Run()` 中添加新 Phase
-3. 在 `internal/model/rule.go` 中添加新的规则类型（如需要）
-4. 更新 `internal/model/types.go` 中的 `AssetType` 枚举
+1. 在 `internal/scanner/` 或新建包中创建扫描器 struct
+2. 在 `internal/discovery/engine.go` 的 `NewEngine()` 中初始化新扫描器
+3. 在 `Run()` 中按所需阶段调用新扫描器的 `Scan()` 方法
+4. 在 `internal/model/rule.go` 中添加新的规则类型（如需要）
+5. 更新 `internal/model/types.go` 中的 `AssetType` 常量
 
 ### 添加新的配置格式支持
 
@@ -595,9 +615,15 @@ sequenceDiagram
 
 技能发现目前仅支持 [Agent Skills 规范](https://agentskills.io/specification) 的 `SKILL.md` 格式（含 YAML frontmatter 的 Markdown 文件）。如需添加新格式支持：
 
-1. 在 `internal/skill/discoverer.go` 的 `scanPath()` 中添加新的文件名匹配逻辑
+1. 在 `internal/skill/discoverer.go` 的 `scanPath()` 中添加新的文件名匹配逻辑（当前仅匹配 `SKILL.md`）
 2. 在 `parseSkillFile()` 中实现新格式的解析分支
 3. 更新 `internal/model/types.go` 中 `Skill` 结构体（如需要新字段）
+
+### 添加新的包管理器支持
+
+1. 在 `internal/scanner/package.go` 的 `knownManagers` map 中添加新的管理器配置
+2. 实现对应的 `parse*List()` 解析函数
+3. 更新 `model.PackageRule` 的 `Managers` 默认列表（`internal/rule/loader.go` 的 `normalizeFeatures`）
 
 ### 添加新的匹配类型
 
