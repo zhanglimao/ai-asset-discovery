@@ -1140,11 +1140,11 @@ agents:
     category: "sdk_detection"
     min_confidence: ghost
     paths:
-      - path: ~/Library/Caches
+      - path: ~/Library/Caches/langchain
         os: darwin
-      - path: ~/.cache
+      - path: ~/.cache/langchain
         os: linux
-      - path: "%LOCALAPPDATA%"
+      - path: "%LOCALAPPDATA%/langchain"
         os: windows
     features:
       processes:

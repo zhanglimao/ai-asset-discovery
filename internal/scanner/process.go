@@ -3,6 +3,7 @@ package scanner
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dlclark/regexp2"
@@ -63,11 +64,56 @@ func isShellWrapper(p model.ProcessInfo) bool {
 	return false
 }
 
+// isIDEExtensionProcess returns true if the process executable or cmdline
+// indicates it's a subprocess of an IDE extension (VS Code, Cursor, Windsurf,
+// etc.). This prevents false positives where non-IDE rules match extension
+// helper processes (e.g., chatgpt rule matching OpenAI extension's codex.exe).
+// Detection is platform-agnostic: looks for "/extensions/" in the path,
+// which works on Windows (backslash normalized to forward slash) and Unix.
+func isIDEExtensionProcess(proc model.ProcessInfo) bool {
+	// Check executable path for IDE extension directories
+	pathsToCheck := []string{proc.Executable, proc.CmdLine, proc.CWD}
+	for _, p := range pathsToCheck {
+		if p == "" {
+			continue
+		}
+		// Normalize separators for cross-platform matching
+		normalized := filepath.ToSlash(p)
+		lower := strings.ToLower(normalized)
+		for _, ideMarker := range ideExtensionMarkers {
+			if strings.Contains(lower, ideMarker) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ideExtensionMarkers are path fragments that indicate an IDE extension
+// subprocess.  Using lowercase path fragments that work across platforms.
+var ideExtensionMarkers = []string{
+	"/extensions/",         // VS Code / Cursor / Windsurf / Trae / etc.
+	"/.vscode/",            // VS Code internal
+	"/.cursor/",            // Cursor internal
+	"/.windsurf/",          // Windsurf internal
+	"/.trae/",              // Trae internal
+	"code-oss/extensions/", // VS Code OSS on Linux
+}
+
 func (ps *ProcessScanner) matchProcesses(rule model.AgentRule, procs []model.ProcessInfo) []model.DiscoveredAgent {
 	var results []model.DiscoveredAgent
 	pr := rule.Process
 
 	for _, proc := range procs {
+		// Cross-platform guard: processes spawned from IDE extension directories
+		// should only be matched against ide_extension rules. Without this,
+		// a CLI agent rule whose cmdline/name contains "chatgpt" would falsely
+		// match the ChatGPT VS Code extension's helper process (codex.exe or
+		// equivalent on macOS/Linux).
+		if rule.Category != "ide_extension" && isIDEExtensionProcess(proc) {
+			continue
+		}
+
 		matches := ps.evaluateProcess(pr, proc)
 		if len(matches) == 0 {
 			continue
@@ -161,9 +207,11 @@ func (ps *ProcessScanner) evaluateProcess(pr *model.ProcessRule, proc model.Proc
 func (ps *ProcessScanner) matchPattern(p model.PatternRule, value string) bool {
 	switch p.Type {
 	case "exact":
-		return value == p.Value
+		return strings.EqualFold(value, p.Value)
+	case "word":
+		return matchWord(value, p.Value)
 	case "contains":
-		return strings.Contains(value, p.Value)
+		return strings.Contains(strings.ToLower(value), strings.ToLower(p.Value))
 	case "regex":
 		re, err := regexp2.Compile(p.Value, regexp2.None)
 		if err != nil {
@@ -175,8 +223,60 @@ func (ps *ProcessScanner) matchPattern(p model.PatternRule, value string) bool {
 		}
 		return matched
 	default:
-		return strings.Contains(value, p.Value)
+		return strings.Contains(strings.ToLower(value), strings.ToLower(p.Value))
 	}
+}
+
+// matchWord checks if s contains word as a whole word (delimited by
+// non-alphanumeric characters, string boundaries, or case transitions).
+func matchWord(s, word string) bool {
+	sLower := strings.ToLower(s)
+	wLower := strings.ToLower(word)
+	if sLower == wLower {
+		return true
+	}
+	idx := 0
+	for {
+		i := strings.Index(sLower[idx:], wLower)
+		if i < 0 {
+			return false
+		}
+		pos := idx + i
+		// Check left boundary
+		if pos > 0 {
+			prev := sLower[pos-1]
+			if isWordChar(prev) {
+				// Check for CamelCase transition: prev is lowercase,
+				// word starts with uppercase (e.g. "openClaw" matches "Claw")
+				if !(isLower(prev) && isUpper(s[pos])) {
+					idx = pos + 1
+					continue
+				}
+			}
+		}
+		// Check right boundary
+		end := pos + len(wLower)
+		if end < len(sLower) {
+			next := sLower[end]
+			if isWordChar(next) {
+				idx = pos + 1
+				continue
+			}
+		}
+		return true
+	}
+}
+
+func isWordChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+}
+
+func isLower(c byte) bool {
+	return c >= 'a' && c <= 'z'
+}
+
+func isUpper(c byte) bool {
+	return c >= 'A' && c <= 'Z'
 }
 
 func (ps *ProcessScanner) extractVersion(proc model.ProcessInfo, versionRegex string) string {

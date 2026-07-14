@@ -296,6 +296,9 @@ func (e *Engine) populateSummary(result *Result, errors []string) {
 	}
 }
 
+// deduplicateAgents removes duplicate agents within the same name+type combination.
+// It also deduplicates skills by file_path to prevent duplicates when skills
+// are collected from multiple scan phases.
 func deduplicateAgents(agents []model.DiscoveredAgent) []model.DiscoveredAgent {
 	seen := make(map[string]*model.DiscoveredAgent)
 	for i := range agents {
@@ -342,12 +345,29 @@ func deduplicateAgents(agents []model.DiscoveredAgent) []model.DiscoveredAgent {
 	}
 	var result []model.DiscoveredAgent
 	for _, v := range seen {
+		v.Skills = deduplicateSkills(v.Skills)
 		result = append(result, *v)
 	}
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
 	return result
+}
+
+// deduplicateSkills removes skills with the same FilePath, keeping the first.
+func deduplicateSkills(skills []model.Skill) []model.Skill {
+	if len(skills) <= 1 {
+		return skills
+	}
+	seen := make(map[string]bool)
+	var deduped []model.Skill
+	for _, s := range skills {
+		if !seen[s.FilePath] {
+			seen[s.FilePath] = true
+			deduped = append(deduped, s)
+		}
+	}
+	return deduped
 }
 
 func confidenceRank(c model.Confidence) int {
@@ -382,6 +402,7 @@ func mergeCrossType(agents []model.DiscoveredAgent) []model.DiscoveredAgent {
 	}
 	var result []model.DiscoveredAgent
 	for _, v := range seen {
+		v.Skills = deduplicateSkills(v.Skills)
 		result = append(result, *v)
 	}
 	sort.Slice(result, func(i, j int) bool {

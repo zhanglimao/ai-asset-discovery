@@ -99,13 +99,19 @@ func (l *Loader) normalizeFeatures(rule *model.AgentRule) {
 		if rule.Process == nil {
 			rule.Process = &model.ProcessRule{MatchLogic: "or"}
 		}
-		// Append simplified process strings as "contains" patterns
+		// Name patterns use word-boundary matching: a process named "omp"
+		// must not match "WUDFCompanionHost" just because "Companion"
+		// contains "omp" as a substring.
+		// CmdLine patterns also use word-boundary by default to prevent
+		// false positives on paths/arguments that contain the pattern
+		// as a substring of a longer token (e.g. "openai.chatgpt-extension"
+		// matching a "chatgpt" rule).
 		for _, proc := range f.Processes {
 			rule.Process.NamePatterns = append(rule.Process.NamePatterns, model.PatternRule{
-				Type: "contains", Value: proc, Weight: 5,
+				Type: "word", Value: proc, Weight: 5,
 			})
 			rule.Process.CmdPatterns = append(rule.Process.CmdPatterns, model.PatternRule{
-				Type: "contains", Value: proc, Weight: 8,
+				Type: "word", Value: proc, Weight: 8,
 			})
 		}
 		// If features has a version_regex, forward it to process rule

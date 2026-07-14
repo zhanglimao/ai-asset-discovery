@@ -90,7 +90,7 @@ func TestAgentsYAML_MinConfidenceValues(t *testing.T) {
 // TestAgentsYAML_ProcessRules validates process detection rules consistency.
 func TestAgentsYAML_ProcessRules(t *testing.T) {
 	rf := loadAgentsYAML(t)
-	validTypes := map[string]bool{"exact": true, "contains": true, "regex": true}
+	validTypes := map[string]bool{"exact": true, "contains": true, "regex": true, "word": true}
 	validMatchLogic := map[string]bool{"and": true, "or": true, "": true} // empty defaults to "or"
 
 	for _, agent := range rf.Agents {
