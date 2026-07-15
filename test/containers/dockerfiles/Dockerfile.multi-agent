@@ -74,6 +74,13 @@ RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "0.0.21"; exit 0; 
     ln -f /bin/sleep /usr/local/bin/interpreter
 RUN mkdir -p /root/.openinterpreter
 
+# ── OpenSpec (simulated: spec-driven dev for AI coding assistants) ─
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "openspec v1.6.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/openspec && \
+    chmod +x /opt/agents/bin/openspec && \
+    ln -f /bin/sleep /usr/local/bin/openspec
+RUN mkdir -p /root/.config/openspec /root/.local/share/openspec /root/.agents/skills/openspec-propose && \
+    echo '{"profile":"core","delivery":"both","featureFlags":{}}' > /root/.config/openspec/config.json
+
 # ── SDK process wrappers (two-tier) ───────────────────────────
 RUN for name in langchain autogen crewai; do \
         printf '#!/bin/bash\necho "%s v1.0.0"\n' "$name" > "/opt/agents/bin/$name" && \

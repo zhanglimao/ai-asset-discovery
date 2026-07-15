@@ -120,10 +120,10 @@ done
 echo ""
 echo "=== Running Tests ==="
 
-# 1. CLI Agents (aider real pip, claude-code/gemini-cli simulated probe, 17 agents total)
+# 1. CLI Agents (aider real pip, claude-code/gemini-cli simulated probe, 18 agents total)
 run_test "cli-agents" "ai-discovery-test/cli-agents:latest" \
-  "aider,claude-code,gemini-cli,openclaw,hermes-agent,opencode,reasonix,kiro,omp,grok-cli,open-interpreter,devin,codex-cli,qwen-code,openhands,goose,warp" \
-  "aider,claude-code,gemini-cli,openclaw,hermes,opencode,reasonix,kiro-cli,omp,grok,interpreter,devin,codex,qwen,openhands,goose,warp"
+  "aider,claude-code,gemini-cli,openclaw,hermes-agent,opencode,reasonix,kiro,omp,grok-cli,open-interpreter,openspec,devin,codex-cli,qwen-code,openhands,goose,warp" \
+  "aider,claude-code,gemini-cli,openclaw,hermes,opencode,reasonix,kiro-cli,omp,grok,interpreter,openspec,devin,codex,qwen,openhands,goose,warp"
 
 # 2. Desktop Assistants (18 agents: Windsurf + ChatGPT + Claude + 15 desktop agents)
 run_test "desktop-assistants" "ai-discovery-test/desktop-assistants:latest" \
@@ -152,8 +152,8 @@ run_test "llm-sdk" "ai-discovery-test/llm-sdk:latest" \
 
 # 7. Multi-Agent (real CLI + real SDK + IDE extensions in one environment)
 run_test "multi-agent" "ai-discovery-test/multi-agent:latest" \
-  "aider,claude-code,hermes-agent,opencode,reasonix,kiro,omp,grok-cli,open-interpreter,llm-sdk-detected,langchain,autogen,crewai,github-copilot,cline,tabnine,codebuddy,qoder" \
-  "aider,claude,hermes,opencode,reasonix,kiro-cli,omp,grok,interpreter,real:k1='langchain';k2='autogen';k3='crewai',code:--extensions-dir"
+  "aider,claude-code,hermes-agent,opencode,reasonix,kiro,omp,grok-cli,open-interpreter,openspec,llm-sdk-detected,langchain,autogen,crewai,github-copilot,cline,tabnine,codebuddy,qoder" \
+  "aider,claude,hermes,opencode,reasonix,kiro-cli,omp,grok,interpreter,openspec,real:k1='langchain';k2='autogen';k3='crewai',code:--extensions-dir"
 
 # 8. Google AI Agents (Antigravity + Gemini Code Assist + ADK + Mariner + NotebookLM)
 run_test "google-agents" "ai-discovery-test/google-agents:latest" \

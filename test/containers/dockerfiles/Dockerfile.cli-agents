@@ -93,6 +93,14 @@ RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "0.0.21"; exit 0; 
 RUN ln -f /bin/sleep /usr/local/bin/interpreter && \
     mkdir -p /root/.openinterpreter
 
+# ── OpenSpec (simulated: Fission-AI/OpenSpec, spec-driven dev) ─
+RUN printf '#!/bin/bash\nif [ "$1" = "--version" ]; then echo "openspec v1.6.0"; exit 0; fi\nexec sleep 999999\n' > /opt/agents/bin/openspec && \
+    chmod +x /opt/agents/bin/openspec
+RUN ln -f /bin/sleep /usr/local/bin/openspec && \
+    mkdir -p /root/.config/openspec && \
+    mkdir -p /root/.local/share/openspec
+RUN echo '{"profile":"core","delivery":"both","featureFlags":{}}' > /root/.config/openspec/config.json
+
 # ── Devin / Codex / Qwen / OpenHands / Goose / Warp ───────────
 RUN for name in devin codex qwen openhands goose warp; do \
         ln -f /bin/sleep "/usr/local/bin/$name" && \
@@ -107,7 +115,8 @@ RUN mkdir -p /root/.claude/skills/code-review /root/.claude-code/skills/code-rev
              /root/.openclaw/tools \
              /root/.hermes/skills/code-review \
              /root/.kiro/skills/code-review /root/.omp/skills/code-review \
-             /root/.grok/skills/code-review /root/.openinterpreter/skills/code-review
+             /root/.grok/skills/code-review /root/.openinterpreter/skills/code-review \
+             /root/.agents/skills/openspec-propose /root/.local/share/openspec/skills
 
 WORKDIR /workspace
 CMD ["sleep", "infinity"]

@@ -700,6 +700,52 @@ agents:
         - ~/.openinterpreter/skills
         - "%APPDATA%/openinterpreter/skills"
 
+  - name: openspec
+    display_name: "OpenSpec"
+    description: "Spec-driven development (SDD) framework for AI coding assistants — CLI + slash-command workflow"
+    category: "cli_agent"
+    min_confidence: possible
+    paths:
+      - path: ~/.config/openspec
+        os: linux
+      - path: ~/Library/Application Support/openspec
+        os: darwin
+      - path: "%APPDATA%/openspec"
+        os: windows
+      - path: ~/.local/share/openspec
+        os: linux
+      - path: ~/Library/Application Support/openspec
+        os: darwin
+      - path: "%LOCALAPPDATA%/openspec"
+        os: windows
+    features:
+      processes:
+        - openspec
+      binaries:
+        - openspec
+      packages:
+        - "@fission-ai/openspec"
+      version_regex: "openspec[\\s@]?v?([0-9]+\\.[0-9]+\\.[0-9]+)"
+      version_flag: "--version"
+    probe:
+      command: openspec
+      args: ["--version"]
+      version_regex: "([0-9]+\\.[0-9]+\\.[0-9]+)"
+    config:
+      format: json
+      paths:
+        - ~/.config/openspec/config.json
+        - ~/Library/Application Support/openspec/config.json
+        - "%APPDATA%/openspec/config.json"
+      field_map:
+        profile: "profile"
+        delivery: "delivery"
+    skills:
+      enabled: true
+      scan_paths:
+        - .agents/skills
+        - ~/.agents/skills
+
   # ============================================================
   # Desktop Applications
   # ============================================================
