@@ -577,7 +577,7 @@ agents:
     min_confidence: possible
     ide:
       scan_paths:
-        - path: "` + extDir + `"
+        - path: "` + filepath.ToSlash(extDir) + `"
       ext_ids:
         - "github.copilot"
 
@@ -588,7 +588,7 @@ agents:
     min_confidence: confirmed
     ide:
       scan_paths:
-        - path: "` + extDir + `"
+        - path: "` + filepath.ToSlash(extDir) + `"
       ext_ids:
         - "github.copilot"
       agent_signals:

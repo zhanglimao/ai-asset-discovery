@@ -56,8 +56,15 @@ func (ps *ProcessScanner) Scan(rules []model.AgentRule) ([]model.DiscoveredAgent
 
 // isShellWrapper returns true if the process is a shell that wraps discovery.
 func isShellWrapper(p model.ProcessInfo) bool {
-	if p.Name == "bash" || p.Name == "sh" || p.Name == "dash" {
+	// Unix shells
+	if p.Name == "bash" || p.Name == "sh" || p.Name == "dash" || p.Name == "zsh" {
 		if strings.Contains(p.CmdLine, "/discovery") || strings.Contains(p.CmdLine, "discovery ") {
+			return true
+		}
+	}
+	// Windows shells
+	if p.Name == "powershell" || p.Name == "pwsh" || p.Name == "cmd" {
+		if strings.Contains(p.CmdLine, "discovery") || strings.Contains(p.CmdLine, "go run") {
 			return true
 		}
 	}

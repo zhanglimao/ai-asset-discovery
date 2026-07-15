@@ -355,6 +355,7 @@ func deduplicateAgents(agents []model.DiscoveredAgent) []model.DiscoveredAgent {
 }
 
 // deduplicateSkills removes skills with the same FilePath, keeping the first.
+// Skills with empty FilePath are never deduplicated against each other.
 func deduplicateSkills(skills []model.Skill) []model.Skill {
 	if len(skills) <= 1 {
 		return skills
@@ -362,10 +363,14 @@ func deduplicateSkills(skills []model.Skill) []model.Skill {
 	seen := make(map[string]bool)
 	var deduped []model.Skill
 	for _, s := range skills {
-		if !seen[s.FilePath] {
+		// Only deduplicate by FilePath when it's non-empty
+		if s.FilePath != "" {
+			if seen[s.FilePath] {
+				continue
+			}
 			seen[s.FilePath] = true
-			deduped = append(deduped, s)
 		}
+		deduped = append(deduped, s)
 	}
 	return deduped
 }

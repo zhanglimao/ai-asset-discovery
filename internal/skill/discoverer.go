@@ -192,7 +192,9 @@ func (d *Discoverer) parseSkillFile(path string) (*model.Skill, error) {
 	if err != nil {
 		return nil, err
 	}
-	return d.parseSKILLmd(path, string(data))
+	// Normalize line endings: \r\n -> \n (Windows files may have CRLF)
+	content := strings.ReplaceAll(string(data), "\r\n", "\n")
+	return d.parseSKILLmd(path, content)
 }
 
 // parseSKILLmd parses a SKILL.md file per the Agent Skills specification:
@@ -234,6 +236,11 @@ func (d *Discoverer) parseSKILLmd(path, content string) (*model.Skill, error) {
 			skill.Name = dirName
 		}
 	}
+
+	// Trim whitespace and carriage returns from name (Windows \r\n issue)
+	skill.Name = strings.TrimSpace(skill.Name)
+	skill.Description = strings.TrimSpace(skill.Description)
+	skill.DisplayName = strings.TrimSpace(skill.DisplayName)
 
 	if skill.Name == "" {
 		return nil, nil
@@ -371,22 +378,22 @@ func (d *Discoverer) parseParameterSection(skill *model.Skill, content string) {
 
 func (d *Discoverer) extractFromMap(skill *model.Skill, data map[string]any) {
 	if v, ok := data["name"].(string); ok {
-		skill.Name = v
+		skill.Name = strings.TrimSpace(v)
 	}
 	if v, ok := data["display_name"].(string); ok {
-		skill.DisplayName = v
+		skill.DisplayName = strings.TrimSpace(v)
 	}
 	if v, ok := data["description"].(string); ok {
-		skill.Description = v
+		skill.Description = strings.TrimSpace(v)
 	}
 	if v, ok := data["version"].(string); ok {
-		skill.Version = v
+		skill.Version = strings.TrimSpace(v)
 	}
 	if v, ok := data["prompt"].(string); ok {
-		skill.PromptTemplate = v
+		skill.PromptTemplate = strings.TrimSpace(v)
 	}
 	if v, ok := data["prompt_template"].(string); ok {
-		skill.PromptTemplate = v
+		skill.PromptTemplate = strings.TrimSpace(v)
 	}
 	if tools, ok := data["tools"].([]any); ok {
 		for _, t := range tools {

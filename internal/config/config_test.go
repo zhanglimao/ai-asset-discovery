@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ func TestExpandPath_HomeDir(t *testing.T) {
 	}
 
 	home, _ := os.UserHomeDir()
-	expected := home + "/test/path"
+	expected := filepath.Join(home, "test", "path")
 	if result != expected {
 		t.Errorf("ExpandPath() = %q, want %q", result, expected)
 	}
@@ -25,8 +26,9 @@ func TestExpandPath_NoExpand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExpandPath() error: %v", err)
 	}
-	if result != "/usr/local/bin" {
-		t.Errorf("ExpandPath() = %q, want /usr/local/bin", result)
+	expected := filepath.Clean("/usr/local/bin")
+	if result != expected {
+		t.Errorf("ExpandPath() = %q, want %q", result, expected)
 	}
 }
 
@@ -38,8 +40,9 @@ func TestExpandPath_EnvVars(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExpandPath() error: %v", err)
 	}
-	if result != "/opt/myapp/config" {
-		t.Errorf("ExpandPath() = %q, want /opt/myapp/config", result)
+	expected := filepath.Clean("/opt/myapp/config")
+	if result != expected {
+		t.Errorf("ExpandPath() = %q, want %q", result, expected)
 	}
 }
 
@@ -133,8 +136,9 @@ func TestExpandPath_AppDataStyle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExpandPath() error: %v", err)
 	}
-	if result != "/home/user/.config/myapp/config" {
-		t.Errorf("ExpandPath() = %q, want /home/user/.config/myapp/config", result)
+	expected := filepath.Clean("/home/user/.config/myapp/config")
+	if result != expected {
+		t.Errorf("ExpandPath() = %q, want %q", result, expected)
 	}
 }
 

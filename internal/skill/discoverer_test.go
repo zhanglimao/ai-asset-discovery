@@ -502,23 +502,28 @@ func TestDiscoverSkillsWithProbe_ExplicitPathsPlusProbe(t *testing.T) {
 func TestDiscoverSkillsWithProbe_SKILLmdIsTheOnlyMatch(t *testing.T) {
 	d := NewDiscoverer()
 	fileDir := t.TempDir()
-	skillDir := filepath.Join(fileDir, "skills")
-	os.MkdirAll(skillDir, 0755)
 
-	// SKILL.md — should be found
-	os.WriteFile(filepath.Join(skillDir, skillFileName),
+	// Use "skills" and "agents" subdirs which ProbeSkillDirs will discover
+	skillDirA := filepath.Join(fileDir, "skills")
+	os.MkdirAll(skillDirA, 0755)
+	os.WriteFile(filepath.Join(skillDirA, skillFileName),
 		[]byte("---\nname: real-skill\ndescription: Real SKILL.md\n---\n"+
 			strings.Repeat("pad", 30)), 0644)
-	// skill.md (lowercase) — should also be found (case-insensitive)
-	os.WriteFile(filepath.Join(skillDir, "skill.md"),
+
+	agentDir := filepath.Join(fileDir, "agents")
+	os.MkdirAll(agentDir, 0755)
+	os.WriteFile(filepath.Join(agentDir, "skill.md"),
 		[]byte("---\nname: lower-skill\ndescription: Lowercase skill.md\n---\n"+
 			strings.Repeat("pad", 30)), 0644)
-	// random.md — should be ignored
-	os.WriteFile(filepath.Join(skillDir, "random.md"),
+
+	// random.md in "tools" subdir — should be ignored (not named SKILL.md)
+	toolsDir := filepath.Join(fileDir, "tools")
+	os.MkdirAll(toolsDir, 0755)
+	os.WriteFile(filepath.Join(toolsDir, "random.md"),
 		[]byte("---\nname: random\ndescription: Not SKILL.md\n---\n"+
 			strings.Repeat("pad", 30)), 0644)
 
-	sr := &model.SkillRule{Enabled: true}
+	sr := &model.SkillRule{Enabled: true, MaxDepth: 4}
 	rule := model.AgentRule{Name: "test-agent", Skills: sr}
 
 	var skillDirOut string

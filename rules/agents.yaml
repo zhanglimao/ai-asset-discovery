@@ -1381,10 +1381,12 @@ agents:
       processes:
         - antigravity-ide
       extensions:
+        - "google.antigravity-ide"
         - "google.antigravity"
       agent_signals:
         - "agent"
         - "createAgent"
+        - "tool_use"
         - "skills"
         - "subagents"
     skills:
