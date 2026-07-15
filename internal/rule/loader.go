@@ -79,6 +79,9 @@ func (l *Loader) Parse(data []byte) (*model.RulesFile, error) {
 			if rf.Agents[i].Skills.MaxSizeKB == 0 {
 				rf.Agents[i].Skills.MaxSizeKB = 100
 			}
+			if rf.Agents[i].Skills.MinSizeKB == 0 {
+				rf.Agents[i].Skills.MinSizeKB = 1
+			}
 			// auto_discover defaults to true
 			if rf.Agents[i].Skills.AutoDiscover == nil {
 				v := true
@@ -89,6 +92,15 @@ func (l *Loader) Parse(data []byte) (*model.RulesFile, error) {
 		l.normalizeFeatures(&rf.Agents[i])
 		// Normalize simplified paths → legacy file rules
 		l.normalizePaths(&rf.Agents[i])
+		// Set IDE defaults (must run after normalizeFeatures which may create IDE from Features)
+		if rf.Agents[i].IDE != nil {
+			if rf.Agents[i].IDE.ManifestFile == "" {
+				rf.Agents[i].IDE.ManifestFile = "package.json"
+			}
+			if len(rf.Agents[i].IDE.AgentDirs) == 0 {
+				rf.Agents[i].IDE.AgentDirs = []string{"dist/agent", "out/agent", "skills", "tools"}
+			}
+		}
 	}
 	return &rf, nil
 }

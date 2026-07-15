@@ -133,6 +133,7 @@ func GlobalSkillRule() *model.SkillRule {
 	return &model.SkillRule{
 		MaxDepth:  3,
 		MaxSizeKB: 100,
+		MinSizeKB: 1,
 	}
 }
 
@@ -154,6 +155,10 @@ func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 	maxSize := sr.MaxSizeKB * 1024
 	if maxSize == 0 {
 		maxSize = 102400 // 100KB default
+	}
+	minSize := sr.MinSizeKB * 1024
+	if minSize == 0 {
+		minSize = 1024 // 1KB default
 	}
 
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
@@ -179,6 +184,9 @@ func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {
 		// Size filter
 		info, err := entry.Info()
 		if err != nil {
+			return nil
+		}
+		if info.Size() < int64(minSize) {
 			return nil
 		}
 		if info.Size() > int64(maxSize) {

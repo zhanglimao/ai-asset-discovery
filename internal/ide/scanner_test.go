@@ -514,14 +514,14 @@ func TestScanner_ReadManifest(t *testing.T) {
 	s := NewScanner()
 	dir := t.TempDir()
 	pkgPath := filepath.Join(dir, "package.json")
-	manifest := VSCodeExtensionManifest{
-		Name:        "test-ext",
-		DisplayName: "Test Extension",
-		Version:     "2.0.0",
-		Publisher:   "testpub",
-		Description: "A test",
-		Categories:  []string{"AI"},
-		Keywords:    []string{"copilot"},
+	manifest := map[string]any{
+		"name":        "test-ext",
+		"displayName": "Test Extension",
+		"version":     "2.0.0",
+		"publisher":   "testpub",
+		"description": "A test",
+		"categories":  []any{"AI"},
+		"keywords":    []any{"copilot"},
 	}
 	data, _ := json.Marshal(manifest)
 	os.WriteFile(pkgPath, data, 0644)
@@ -530,11 +530,11 @@ func TestScanner_ReadManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readManifest() error: %v", err)
 	}
-	if m.Name != "test-ext" {
-		t.Errorf("Name = %q, want test-ext", m.Name)
+	if m["name"] != "test-ext" {
+		t.Errorf("Name = %q, want test-ext", m["name"])
 	}
-	if m.DisplayName != "Test Extension" {
-		t.Errorf("DisplayName = %q", m.DisplayName)
+	if m["displayName"] != "Test Extension" {
+		t.Errorf("DisplayName = %q", m["displayName"])
 	}
 }
 

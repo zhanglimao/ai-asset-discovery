@@ -149,6 +149,18 @@ type IDERule struct {
 	// each subdirectory and matches against ExtIDs / AgentSignals.
 	ScanPaths []IDEScanPath `yaml:"scan_paths,omitempty" json:"scan_paths,omitempty"`
 
+	// ManifestFile is the name of the manifest file to read in each
+	// extension subdirectory. Default: "package.json" (VS Code/Cursor/
+	// Windsurf). Override for other IDEs (e.g. "plugin.xml" for IntelliJ).
+	ManifestFile string `yaml:"manifest_file,omitempty" json:"manifest_file,omitempty"`
+
+	// AgentDirs are subdirectory names to probe inside an extension
+	// folder that indicate agent capabilities (e.g. ["skills","tools"]).
+	// Used by checkAgentCapability to confirm whether an extension is an
+	// agent beyond simple ExtID/Keyword matching.
+	// Default: ["dist/agent","out/agent","skills","tools"].
+	AgentDirs []string `yaml:"agent_dirs,omitempty" json:"agent_dirs,omitempty"`
+
 	// ── Matching criteria ──
 	ExtIDs       []string        `yaml:"ext_ids,omitempty" json:"ext_ids,omitempty"`
 	Keywords     []string        `yaml:"keywords,omitempty" json:"keywords,omitempty"`
@@ -197,6 +209,10 @@ type SkillRule struct {
 	MaxDepth int `yaml:"max_depth" json:"max_depth"`
 	// Max file size to parse (KB)
 	MaxSizeKB int `yaml:"max_size_kb" json:"max_size_kb"`
+	// Min file size to consider (KB). Files smaller than this are skipped
+	// to avoid parsing empty/trivial SKILL.md files.
+	// Default: 1 (ignores files < 1KB).
+	MinSizeKB int `yaml:"min_size_kb" json:"min_size_kb"`
 	// AutoDiscover enables automatic probing for skill directories under
 	// file-evidence directories (e.g. ~/.cline → probes ~/.cline/skills,
 	// ~/.cline/tools, ~/.cline/agents, etc.)

@@ -99,6 +99,9 @@ agents:
 	if sk.MaxSizeKB != 100 {
 		t.Errorf("Skills.MaxSizeKB = %d, want 100 (default)", sk.MaxSizeKB)
 	}
+	if sk.MinSizeKB != 1 {
+		t.Errorf("Skills.MinSizeKB = %d, want 1 (default)", sk.MinSizeKB)
+	}
 }
 
 func TestLoader_LoadFile(t *testing.T) {
@@ -178,5 +181,86 @@ func TestLoader_Parse_InvalidYAML(t *testing.T) {
 	_, err := loader.Parse([]byte(`:invalid: yaml: [`))
 	if err == nil {
 		t.Error("Parse() should return error for invalid YAML")
+	}
+}
+
+func TestLoader_Parse_IDEDefaults(t *testing.T) {
+	loader := NewLoader()
+
+	yamlData := []byte(`
+version: "1.0"
+agents:
+  - name: ide-agent
+    display_name: "IDE Agent"
+    category: "test"
+    ide:
+      scan_paths:
+        - path: "~/.vscode/extensions"
+          label: "VS Code"
+          os: windows
+`)
+
+	rf, err := loader.Parse(yamlData)
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+
+	if len(rf.Agents) != 1 {
+		t.Fatalf("len(Agents) = %d, want 1", len(rf.Agents))
+	}
+
+	ide := rf.Agents[0].IDE
+	if ide == nil {
+		t.Fatal("IDE is nil")
+	}
+	if ide.ManifestFile != "package.json" {
+		t.Errorf("IDE.ManifestFile = %q, want %q (default)", ide.ManifestFile, "package.json")
+	}
+	if len(ide.AgentDirs) != 4 {
+		t.Errorf("len(IDE.AgentDirs) = %d, want 4 (default)", len(ide.AgentDirs))
+	}
+	expectedDirs := []string{"dist/agent", "out/agent", "skills", "tools"}
+	for i, d := range expectedDirs {
+		if i >= len(ide.AgentDirs) || ide.AgentDirs[i] != d {
+			t.Errorf("IDE.AgentDirs[%d] = %q, want %q", i, ide.AgentDirs[i], d)
+		}
+	}
+}
+
+func TestLoader_Parse_IDEDefaultsFromFeatures(t *testing.T) {
+	loader := NewLoader()
+
+	// IDE created through features should also get defaults
+	yamlData := []byte(`
+version: "1.0"
+agents:
+  - name: feature-ide-agent
+    display_name: "Feature IDE Agent"
+    category: "test"
+    features:
+      extensions:
+        - "github.copilot"
+      agent_signals:
+        - "provideInlineCompletions"
+`)
+
+	rf, err := loader.Parse(yamlData)
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+
+	if len(rf.Agents) != 1 {
+		t.Fatalf("len(Agents) = %d, want 1", len(rf.Agents))
+	}
+
+	ide := rf.Agents[0].IDE
+	if ide == nil {
+		t.Fatal("IDE is nil (should be created from features)")
+	}
+	if ide.ManifestFile != "package.json" {
+		t.Errorf("IDE.ManifestFile = %q, want %q (default)", ide.ManifestFile, "package.json")
+	}
+	if len(ide.AgentDirs) != 4 {
+		t.Errorf("len(IDE.AgentDirs) = %d, want 4 (default)", len(ide.AgentDirs))
 	}
 }

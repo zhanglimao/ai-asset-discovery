@@ -13,26 +13,19 @@ import (
 )
 
 // Scanner scans IDE extensions for AI agents.
-type Scanner struct{}
+// The scanner is IDE-agnostic: all IDE-specific knowledge (manifest file name,
+// matching fields, agent directory probes) comes from the rule YAML, not from Go.
+type Scanner struct {
+	// manifestCache holds parsed manifest maps keyed by ExtPath,
+	// used internally for matching/checking without leaking into output.
+	manifestCache map[string]map[string]any
+}
 
 // NewScanner creates a new IDE scanner.
 func NewScanner() *Scanner {
-	return &Scanner{}
-}
-
-// VSCodeExtensionManifest represents a VS Code extension's package.json.
-type VSCodeExtensionManifest struct {
-	Name             string            `json:"name"`
-	DisplayName      string            `json:"displayName"`
-	Version          string            `json:"version"`
-	Publisher        string            `json:"publisher"`
-	Description      string            `json:"description"`
-	Categories       []string          `json:"categories"`
-	Keywords         []string          `json:"keywords"`
-	Main             string            `json:"main"`
-	Contributes      map[string]any    `json:"contributes"`
-	ActivationEvents []string          `json:"activationEvents"`
-	Dependencies     map[string]string `json:"dependencies"`
+	return &Scanner{
+		manifestCache: make(map[string]map[string]any),
+	}
 }
 
 // Scan scans IDE extensions and returns matched agents.
@@ -79,7 +72,7 @@ func (s *Scanner) scanIDERule(rule model.AgentRule) []model.DiscoveredAgent {
 			continue
 		}
 
-		extensions, err := s.scanExtensionsDir(expandedPath)
+		extensions, err := s.scanExtensionsDir(expandedPath, ideRule)
 		if err != nil {
 			continue
 		}
@@ -160,19 +153,26 @@ func (s *Scanner) isAIExtensionByHeuristics(ext *model.IDEExtension, rule *model
 	// Check keywords against categories, extension keywords, and display name
 	for _, kw := range rule.Keywords {
 		kwLower := strings.ToLower(kw)
-		for _, cat := range manifest.Categories {
-			if strings.Contains(strings.ToLower(cat), kwLower) {
-				ext.IsAI = true
-				return true
+		// categories
+		if cats, ok := manifest["categories"].([]any); ok {
+			for _, c := range cats {
+				if cs, ok := c.(string); ok && strings.Contains(strings.ToLower(cs), kwLower) {
+					ext.IsAI = true
+					return true
+				}
 			}
 		}
-		for _, ekw := range manifest.Keywords {
-			if strings.Contains(strings.ToLower(ekw), kwLower) {
-				ext.IsAI = true
-				return true
+		// keywords
+		if kws, ok := manifest["keywords"].([]any); ok {
+			for _, k := range kws {
+				if ks, ok := k.(string); ok && strings.Contains(strings.ToLower(ks), kwLower) {
+					ext.IsAI = true
+					return true
+				}
 			}
 		}
-		if strings.Contains(strings.ToLower(manifest.DisplayName), kwLower) {
+		// displayName
+		if dn, ok := manifest["displayName"].(string); ok && strings.Contains(strings.ToLower(dn), kwLower) {
 			ext.IsAI = true
 			return true
 		}
@@ -181,10 +181,12 @@ func (s *Scanner) isAIExtensionByHeuristics(ext *model.IDEExtension, rule *model
 	// Check dependencies
 	for _, dep := range rule.Depends {
 		depLower := strings.ToLower(dep)
-		for depName := range manifest.Dependencies {
-			if strings.Contains(strings.ToLower(depName), depLower) {
-				ext.IsAI = true
-				return true
+		if deps, ok := manifest["dependencies"].(map[string]any); ok {
+			for depName := range deps {
+				if strings.Contains(strings.ToLower(depName), depLower) {
+					ext.IsAI = true
+					return true
+				}
 			}
 		}
 	}
@@ -192,10 +194,15 @@ func (s *Scanner) isAIExtensionByHeuristics(ext *model.IDEExtension, rule *model
 	return false
 }
 
-func (s *Scanner) scanExtensionsDir(extDir string) ([]*model.IDEExtension, error) {
+func (s *Scanner) scanExtensionsDir(extDir string, ideRule *model.IDERule) ([]*model.IDEExtension, error) {
 	entries, err := os.ReadDir(extDir)
 	if err != nil {
 		return nil, err
+	}
+
+	manifestFile := ideRule.ManifestFile
+	if manifestFile == "" {
+		manifestFile = "package.json"
 	}
 
 	var extensions []*model.IDEExtension
@@ -203,62 +210,69 @@ func (s *Scanner) scanExtensionsDir(extDir string) ([]*model.IDEExtension, error
 		if !e.IsDir() {
 			continue
 		}
-		pkgPath := filepath.Join(extDir, e.Name(), "package.json")
+		pkgPath := filepath.Join(extDir, e.Name(), manifestFile)
 		manifest, err := s.readManifest(pkgPath)
 		if err != nil {
 			continue
 		}
 
-		ext := &model.IDEExtension{
-			ID:          fmt.Sprintf("%s.%s", manifest.Publisher, manifest.Name),
-			Name:        manifest.DisplayName,
-			Version:     manifest.Version,
-			Publisher:   manifest.Publisher,
-			Description: manifest.Description,
-			IDEPath:     extDir,
-			ExtPath:     filepath.Join(extDir, e.Name()),
-			// Cache the manifest so subsequent calls (matchExtension,
-			// checkAgentCapability, extractConfigValue) don't re-read
-			// package.json from disk.
-			Config: map[string]any{
-				"_manifest": manifest,
-			},
-		}
-		if ext.Name == "" {
-			ext.Name = manifest.Name
-		}
+		ext := buildExtension(manifest, extDir, e.Name())
+		// Cache manifest in-memory for subsequent checks — does NOT leak into JSON.
+		s.manifestCache[ext.ExtPath] = manifest
 		extensions = append(extensions, ext)
 	}
 	return extensions, nil
 }
 
+// buildExtension populates an IDEExtension from a generic manifest map.
+func buildExtension(manifest map[string]any, extDir, subDir string) *model.IDEExtension {
+	publisher, _ := manifest["publisher"].(string)
+	name, _ := manifest["name"].(string)
+	displayName, _ := manifest["displayName"].(string)
+	version, _ := manifest["version"].(string)
+	description, _ := manifest["description"].(string)
+
+	ext := &model.IDEExtension{
+		ID:          fmt.Sprintf("%s.%s", publisher, name),
+		Name:        displayName,
+		Version:     version,
+		Publisher:   publisher,
+		Description: description,
+		IDEPath:     extDir,
+		ExtPath:     filepath.Join(extDir, subDir),
+	}
+	if ext.Name == "" {
+		ext.Name = name
+	}
+	return ext
+}
+
 // getCachedManifest returns the manifest cached during scanExtensionsDir,
 // or reads it from disk as fallback.
-func (s *Scanner) getCachedManifest(ext *model.IDEExtension) *VSCodeExtensionManifest {
-	if ext.Config != nil {
-		if m, ok := ext.Config["_manifest"].(*VSCodeExtensionManifest); ok && m != nil {
-			return m
-		}
+func (s *Scanner) getCachedManifest(ext *model.IDEExtension) map[string]any {
+	if m, ok := s.manifestCache[ext.ExtPath]; ok && m != nil {
+		return m
 	}
-	// Fallback: read from disk
+	// Fallback: read from disk (use default manifest file name)
 	pkgPath := filepath.Join(ext.ExtPath, "package.json")
 	m, err := s.readManifest(pkgPath)
 	if err != nil {
 		return nil
 	}
+	s.manifestCache[ext.ExtPath] = m
 	return m
 }
 
-func (s *Scanner) readManifest(path string) (*VSCodeExtensionManifest, error) {
+func (s *Scanner) readManifest(path string) (map[string]any, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var m VSCodeExtensionManifest
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, err
 	}
-	return &m, nil
+	return m, nil
 }
 
 func (s *Scanner) checkAgentCapability(ext *model.IDEExtension, rule *model.IDERule) bool {
@@ -270,24 +284,32 @@ func (s *Scanner) checkAgentCapability(ext *model.IDEExtension, rule *model.IDER
 	}
 
 	// Check activationEvents for "agent"
-	for _, ae := range manifest.ActivationEvents {
-		if strings.Contains(strings.ToLower(ae), "agent") {
-			signals = append(signals, "activation:agent")
+	if aeList, ok := manifest["activationEvents"].([]any); ok {
+		for _, ae := range aeList {
+			if a, ok := ae.(string); ok && strings.Contains(strings.ToLower(a), "agent") {
+				signals = append(signals, "activation:agent")
+				break
+			}
 		}
 	}
 
 	// Check contributes.agent
-	if contributes, ok := manifest.Contributes["agent"]; ok && contributes != nil {
-		signals = append(signals, "contributes:agent")
+	if contributes, ok := manifest["contributes"].(map[string]any); ok {
+		if _, ok := contributes["agent"]; ok {
+			signals = append(signals, "contributes:agent")
+		}
 	}
 
 	// Check main entry for agent export
-	if strings.Contains(strings.ToLower(manifest.Main), "agent") {
+	if main, ok := manifest["main"].(string); ok && strings.Contains(strings.ToLower(main), "agent") {
 		signals = append(signals, "main:agent")
 	}
 
-	// Check for agent-specific directories
-	agentDirs := []string{"dist/agent", "out/agent", "skills", "tools", ".cline", ".continue"}
+	// Check for agent-specific directories — rule-driven
+	agentDirs := rule.AgentDirs
+	if len(agentDirs) == 0 {
+		agentDirs = []string{"dist/agent", "out/agent", "skills", "tools"}
+	}
 	for _, dir := range agentDirs {
 		checkPath := filepath.Join(ext.ExtPath, dir)
 		if info, err := os.Stat(checkPath); err == nil && info.IsDir() {
@@ -295,16 +317,18 @@ func (s *Scanner) checkAgentCapability(ext *model.IDEExtension, rule *model.IDER
 		}
 	}
 
-	// Check for agent signals from rule
-	mainPath := filepath.Join(ext.ExtPath, manifest.Main)
-	if data, err := os.ReadFile(mainPath); err == nil {
-		content := string(data)
-		if len(content) > 102400 {
-			content = content[:102400]
-		}
-		for _, sig := range rule.AgentSignals {
-			if strings.Contains(content, sig) {
-				signals = append(signals, "code:"+sig)
+	// Check for agent signals from rule inside main source file
+	if main, ok := manifest["main"].(string); ok && main != "" {
+		mainPath := filepath.Join(ext.ExtPath, main)
+		if data, err := os.ReadFile(mainPath); err == nil {
+			content := string(data)
+			if len(content) > 102400 {
+				content = content[:102400]
+			}
+			for _, sig := range rule.AgentSignals {
+				if strings.Contains(content, sig) {
+					signals = append(signals, "code:"+sig)
+				}
 			}
 		}
 	}
@@ -315,41 +339,23 @@ func (s *Scanner) checkAgentCapability(ext *model.IDEExtension, rule *model.IDER
 }
 
 func (s *Scanner) extractConfigValue(ext *model.IDEExtension, keyPath string) string {
-	// Use cached manifest from scanExtensionsDir
 	manifest := s.getCachedManifest(ext)
 	if manifest == nil {
 		return ""
 	}
 
-	// Try to find nested key
 	keys := strings.Split(keyPath, ".")
 	current := any(manifest)
 	for _, key := range keys {
-		switch v := current.(type) {
-		case map[string]any:
-			current = v[key]
-		case *VSCodeExtensionManifest:
-			// Handle top-level known fields
-			m := current.(*VSCodeExtensionManifest)
-			switch key {
-			case "version":
-				return m.Version
-			case "name":
-				return m.Name
-			case "displayName":
-				return m.DisplayName
-			case "publisher":
-				return m.Publisher
-			case "description":
-				return m.Description
-			default:
-				return ""
-			}
-		default:
+		m, ok := current.(map[string]any)
+		if !ok {
+			return ""
+		}
+		current = m[key]
+		if current == nil {
 			return ""
 		}
 	}
-
 	if str, ok := current.(string); ok {
 		return str
 	}

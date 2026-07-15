@@ -485,6 +485,7 @@ func (e *Engine) runSkillDiscoveryParallel(result *Result, errs *errCollector) {
 func computeScanLimitsForPath(path string, dirToEntryIdx map[string][]int, entries []skillRuleEntry) *model.SkillRule {
 	maxDepth := 0
 	maxSizeKB := 0
+	minSizeKB := 0
 
 	for _, idx := range dirToEntryIdx[path] {
 		if idx < 0 || idx >= len(entries) {
@@ -500,6 +501,11 @@ func computeScanLimitsForPath(path string, dirToEntryIdx map[string][]int, entri
 		if sr.MaxSizeKB > maxSizeKB {
 			maxSizeKB = sr.MaxSizeKB
 		}
+		// Use the smallest min across rules to be conservative — if any
+		// rule allows small files they should be discovered.
+		if minSizeKB == 0 || (sr.MinSizeKB > 0 && sr.MinSizeKB < minSizeKB) {
+			minSizeKB = sr.MinSizeKB
+		}
 	}
 
 	// Fall back to defaults (matching GlobalSkillRule) when no rule
@@ -510,10 +516,14 @@ func computeScanLimitsForPath(path string, dirToEntryIdx map[string][]int, entri
 	if maxSizeKB == 0 {
 		maxSizeKB = 100
 	}
+	if minSizeKB == 0 {
+		minSizeKB = 1
+	}
 
 	return &model.SkillRule{
 		MaxDepth:  maxDepth,
 		MaxSizeKB: maxSizeKB,
+		MinSizeKB: minSizeKB,
 	}
 }
 

@@ -247,6 +247,62 @@ func TestDiscoverer_ScanPath_SizeLimits(t *testing.T) {
 	}
 }
 
+func TestDiscoverer_ScanPath_MinSizeFilter(t *testing.T) {
+	d := NewDiscoverer()
+
+	dir := t.TempDir()
+	skillDir := filepath.Join(dir, "skills")
+	os.MkdirAll(skillDir, 0755)
+
+	// File that is too small (<1KB) — should be filtered out
+	tinyContent := strings.Repeat("x", 128) // 128 bytes, below 1KB
+	os.WriteFile(filepath.Join(skillDir, skillFileName), []byte(tinyContent+"\n"), 0644)
+
+	// File that meets the minimum size (>=1KB) — should be discovered
+	validContent := strings.Repeat("---\nname: valid\ndescription: Valid\n---\n# Valid\n", 40) // >1KB
+	validDir := filepath.Join(dir, "valid")
+	os.MkdirAll(validDir, 0755)
+	os.WriteFile(filepath.Join(validDir, skillFileName), []byte(validContent), 0644)
+
+	sr := &model.SkillRule{
+		MaxDepth:  3,
+		MaxSizeKB: 100,
+		MinSizeKB: 1, // 1KB minimum
+	}
+
+	// Should NOT find the tiny file
+	skills := d.scanPath(skillDir, sr)
+	if len(skills) != 0 {
+		t.Errorf("expected 0 skills (SKILL.md below 1KB minimum), got %d", len(skills))
+	}
+
+	// Should find the valid-sized file
+	skills = d.scanPath(validDir, sr)
+	if len(skills) != 1 {
+		t.Errorf("expected 1 skill (SKILL.md above 1KB minimum), got %d", len(skills))
+	}
+}
+
+func TestDiscoverer_ScanPath_MinSizeDefault(t *testing.T) {
+	d := NewDiscoverer()
+
+	dir := t.TempDir()
+	// File at 512 bytes — below the default 1KB minimum
+	tinyContent := strings.Repeat("x", 400)
+	os.WriteFile(filepath.Join(dir, skillFileName), []byte(tinyContent), 0644)
+
+	sr := &model.SkillRule{
+		MaxDepth:  3,
+		MaxSizeKB: 100,
+		// MinSizeKB=0 → defaults to 1KB in scanPath
+	}
+
+	skills := d.scanPath(dir, sr)
+	if len(skills) != 0 {
+		t.Errorf("expected 0 skills (SKILL.md below default 1KB min), got %d", len(skills))
+	}
+}
+
 func TestDiscoverer_DiscoverSkills_NoRules(t *testing.T) {
 	d := NewDiscoverer()
 	rule := model.AgentRule{Name: "no-skills"}
