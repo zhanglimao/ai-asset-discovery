@@ -127,6 +127,21 @@ func isInPaths(target string, paths []string) bool {
 	return false
 }
 
+// GlobalSkillRule returns a SkillRule with default scanning parameters
+// suitable for a global walk.
+func GlobalSkillRule() *model.SkillRule {
+	return &model.SkillRule{
+		MaxDepth:  3,
+		MaxSizeKB: 100,
+	}
+}
+
+// ScanPath walks a directory tree and parses every SKILL.md file it finds.
+// This is the public version usable for global walks.
+func (d *Discoverer) ScanPath(root string, sr *model.SkillRule) []model.Skill {
+	return d.scanPath(root, sr)
+}
+
 // scanPath walks a directory tree and parses every SKILL.md file it finds.
 // Only files named exactly "SKILL.md" (case-insensitive) are considered.
 func (d *Discoverer) scanPath(root string, sr *model.SkillRule) []model.Skill {

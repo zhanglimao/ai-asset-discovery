@@ -152,9 +152,8 @@ func (s *Scanner) matchExtension(ext *model.IDEExtension, rule *model.IDERule) b
 // isAIExtensionByHeuristics tries keyword, dependency, and display-name matching.
 // This is only called when ExtIDs are not set, or as a fallback.
 func (s *Scanner) isAIExtensionByHeuristics(ext *model.IDEExtension, rule *model.IDERule) bool {
-	pkgPath := filepath.Join(ext.ExtPath, "package.json")
-	manifest, err := s.readManifest(pkgPath)
-	if err != nil {
+	manifest := s.getCachedManifest(ext)
+	if manifest == nil {
 		return false
 	}
 
@@ -218,6 +217,12 @@ func (s *Scanner) scanExtensionsDir(extDir string) ([]*model.IDEExtension, error
 			Description: manifest.Description,
 			IDEPath:     extDir,
 			ExtPath:     filepath.Join(extDir, e.Name()),
+			// Cache the manifest so subsequent calls (matchExtension,
+			// checkAgentCapability, extractConfigValue) don't re-read
+			// package.json from disk.
+			Config: map[string]any{
+				"_manifest": manifest,
+			},
 		}
 		if ext.Name == "" {
 			ext.Name = manifest.Name
@@ -225,6 +230,23 @@ func (s *Scanner) scanExtensionsDir(extDir string) ([]*model.IDEExtension, error
 		extensions = append(extensions, ext)
 	}
 	return extensions, nil
+}
+
+// getCachedManifest returns the manifest cached during scanExtensionsDir,
+// or reads it from disk as fallback.
+func (s *Scanner) getCachedManifest(ext *model.IDEExtension) *VSCodeExtensionManifest {
+	if ext.Config != nil {
+		if m, ok := ext.Config["_manifest"].(*VSCodeExtensionManifest); ok && m != nil {
+			return m
+		}
+	}
+	// Fallback: read from disk
+	pkgPath := filepath.Join(ext.ExtPath, "package.json")
+	m, err := s.readManifest(pkgPath)
+	if err != nil {
+		return nil
+	}
+	return m
 }
 
 func (s *Scanner) readManifest(path string) (*VSCodeExtensionManifest, error) {
@@ -242,9 +264,8 @@ func (s *Scanner) readManifest(path string) (*VSCodeExtensionManifest, error) {
 func (s *Scanner) checkAgentCapability(ext *model.IDEExtension, rule *model.IDERule) bool {
 	var signals []string
 
-	pkgPath := filepath.Join(ext.ExtPath, "package.json")
-	manifest, err := s.readManifest(pkgPath)
-	if err != nil {
+	manifest := s.getCachedManifest(ext)
+	if manifest == nil {
 		return false
 	}
 
@@ -294,10 +315,9 @@ func (s *Scanner) checkAgentCapability(ext *model.IDEExtension, rule *model.IDER
 }
 
 func (s *Scanner) extractConfigValue(ext *model.IDEExtension, keyPath string) string {
-	// Read contributes.configuration from package.json
-	pkgPath := filepath.Join(ext.ExtPath, "package.json")
-	manifest, err := s.readManifest(pkgPath)
-	if err != nil {
+	// Use cached manifest from scanExtensionsDir
+	manifest := s.getCachedManifest(ext)
+	if manifest == nil {
 		return ""
 	}
 

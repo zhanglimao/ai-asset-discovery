@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 
@@ -16,6 +18,33 @@ import (
 	"github.com/ai-asset-discovery/internal/scanner"
 	"github.com/ai-asset-discovery/internal/skill"
 )
+
+// errCollector is a thread-safe error collector.
+type errCollector struct {
+	mu   sync.Mutex
+	errs []string
+}
+
+func (ec *errCollector) add(s string) {
+	ec.mu.Lock()
+	ec.errs = append(ec.errs, s)
+	ec.mu.Unlock()
+}
+
+// agentCollector is a thread-safe agent result collector.
+type agentCollector struct {
+	mu     sync.Mutex
+	agents []model.DiscoveredAgent
+}
+
+func (ac *agentCollector) append(agents ...model.DiscoveredAgent) {
+	if len(agents) == 0 {
+		return
+	}
+	ac.mu.Lock()
+	ac.agents = append(ac.agents, agents...)
+	ac.mu.Unlock()
+}
 
 // Engine orchestrates AI asset discovery.
 type Engine struct {
@@ -73,17 +102,42 @@ func (e *Engine) LoadRules(path string) error {
 	} else {
 		e.rules, err = e.ruleLoader.LoadFile(path)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	e.registerPackageManagers()
+	return nil
 }
 
 // LoadRulesFromBytes loads rules directly from YAML bytes.
 func (e *Engine) LoadRulesFromBytes(data []byte) error {
 	var err error
 	e.rules, err = e.ruleLoader.Parse(data)
-	return err
+	if err != nil {
+		return err
+	}
+	e.registerPackageManagers()
+	return nil
 }
 
-// Run executes the full discovery process.
+// registerPackageManagers registers any custom package manager definitions
+// from the rules file with the package scanner. Built-in defaults remain
+// available; custom definitions add or override them.
+func (e *Engine) registerPackageManagers() {
+	if e.rules == nil || len(e.rules.PackageManagers) == 0 {
+		return
+	}
+	for name, def := range e.rules.PackageManagers {
+		e.pkgScanner.RegisterManager(name, scanner.PackageManager{
+			Command:      def.Command,
+			ListCmd:      def.ListArgs,
+			OutputFormat: def.OutputFormat,
+			Timeout:      def.Timeout,
+		})
+	}
+}
+
+// Run executes the full discovery process with parallel phases for maximum throughput.
 func (e *Engine) Run() (*Result, error) {
 	if e.rules == nil {
 		return nil, fmt.Errorf("no rules loaded")
@@ -96,31 +150,48 @@ func (e *Engine) Run() (*Result, error) {
 		},
 	}
 
-	var errors []string
+	errs := &errCollector{}
+	collector := &agentCollector{}
 
-	// Phase 1: Process scanning
-	processAgents, err := e.processScanner.Scan(e.rules.Agents)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("process scan: %v", err))
-	} else {
-		result.Agents = append(result.Agents, processAgents...)
-	}
+	// ──────────────────────────────────────────────
+	// Parallel batch 1: Process + File + IDE scanning
+	// These phases are independent of each other.
+	// ──────────────────────────────────────────────
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	// Phase 2: File scanning
-	fileAgents, err := e.fileScanner.Scan(e.rules.Agents)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("file scan: %v", err))
-	} else {
-		result.Agents = append(result.Agents, fileAgents...)
-	}
+	go func() {
+		defer wg.Done()
+		agents, err := e.processScanner.Scan(e.rules.Agents)
+		if err != nil {
+			errs.add(fmt.Sprintf("process scan: %v", err))
+		} else {
+			collector.append(agents...)
+		}
+	}()
 
-	// Phase 3: IDE extension scanning
-	ideAgents, err := e.ideScanner.Scan(e.rules.Agents)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("ide scan: %v", err))
-	} else {
-		result.Agents = append(result.Agents, ideAgents...)
-	}
+	go func() {
+		defer wg.Done()
+		agents, err := e.fileScanner.Scan(e.rules.Agents)
+		if err != nil {
+			errs.add(fmt.Sprintf("file scan: %v", err))
+		} else {
+			collector.append(agents...)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		agents, err := e.ideScanner.Scan(e.rules.Agents)
+		if err != nil {
+			errs.add(fmt.Sprintf("ide scan: %v", err))
+		} else {
+			collector.append(agents...)
+		}
+	}()
+
+	wg.Wait()
+	result.Agents = collector.agents
 
 	// Phase 3.5: Extract version from IDE extensions
 	for i := range result.Agents {
@@ -130,23 +201,140 @@ func (e *Engine) Run() (*Result, error) {
 		}
 	}
 
-	// Phase 4: Config extraction for each agent
-	for i := range result.Agents {
-		agent := &result.Agents[i]
-		e.extractAgentConfigs(agent)
+	// Phase 4: Config extraction — parallelized per agent
+	e.extractConfigsParallel(result.Agents)
+
+	// Phase 5: Skill discovery — global scan with per-agent attribution
+	// instead of per-agent independent walks.
+	e.runSkillDiscoveryParallel(result, errs)
+
+	// ──────────────────────────────────────────────
+	// Parallel batch 2: Package + Binary + Probe scanning
+	// These are independent of each other.
+	// ──────────────────────────────────────────────
+	collector = &agentCollector{}
+	var wg2 sync.WaitGroup
+	wg2.Add(3)
+
+	go func() {
+		defer wg2.Done()
+		collector.append(e.pkgScanner.Scan(e.rules.Agents)...)
+	}()
+
+	go func() {
+		defer wg2.Done()
+		collector.append(e.binaryScanner.Scan(e.rules.Agents)...)
+	}()
+
+	go func() {
+		defer wg2.Done()
+		collector.append(e.probeScanner.Scan(e.rules.Agents)...)
+	}()
+
+	wg2.Wait()
+	result.Agents = append(result.Agents, collector.agents...)
+
+	// Deduplicate & merge
+	result.Agents = deduplicateAgents(result.Agents)
+	result.Agents = mergeCrossType(result.Agents)
+
+	// Populate summary
+	e.populateSummary(result, errs.errs)
+
+	return result, nil
+}
+
+// extractConfigsParallel extracts configs for all agents in parallel using a
+// bounded goroutine pool.
+func (e *Engine) extractConfigsParallel(agents []model.DiscoveredAgent) {
+	if len(agents) == 0 {
+		return
 	}
 
-	// Phase 5: Skill discovery — runs independently for every agent
-	// rule with skills.enabled: true. Skills are attached to discovered
-	// agents, or a new ghost agent entry is created if skills were found
-	// but the agent was not otherwise detected.
+	// Pre-build a rule name→rule lookup to avoid O(n*m) search in each goroutine.
+	ruleByName := make(map[string]*model.AgentRule, len(e.rules.Agents))
+	for i := range e.rules.Agents {
+		ruleByName[e.rules.Agents[i].Name] = &e.rules.Agents[i]
+	}
+
+	concurrency := max(1, runtime.NumCPU())
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+
+	for i := range agents {
+		agent := &agents[i]
+		r, ok := ruleByName[agent.Name]
+		if !ok || r.Config == nil {
+			continue
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(a *model.DiscoveredAgent, rule *model.AgentRule) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			e.extractSingleAgentConfig(a, rule)
+		}(agent, r)
+	}
+	wg.Wait()
+}
+
+func (e *Engine) extractSingleAgentConfig(agent *model.DiscoveredAgent, rule *model.AgentRule) {
+	cfgRule := rule.Config
+	if cfgRule == nil {
+		return
+	}
+	configData := make(map[string]any)
+
+	for _, cfgPath := range cfgRule.Paths {
+		expandedPath, err := config.ExpandPath(cfgPath)
+		if err != nil {
+			continue
+		}
+		data, err := os.ReadFile(expandedPath)
+		if err != nil {
+			continue
+		}
+		parsed := parseConfigFormat(data, cfgRule.Format)
+		for targetKey, sourcePath := range cfgRule.FieldMap {
+			if val := getNestedValue(parsed, sourcePath); val != nil {
+				configData[targetKey] = val
+			}
+		}
+	}
+	if len(configData) > 0 {
+		if agent.Config == nil {
+			agent.Config = make(map[string]any)
+		}
+		for k, v := range configData {
+			agent.Config[k] = v
+		}
+		if agent.Version == "" {
+			if ver, ok := configData["version"]; ok {
+				agent.Version = fmt.Sprintf("%v", ver)
+			}
+		}
+	}
+}
+
+// skillRuleEntry pairs a skill-enabled rule with the file-evidence directories
+// collected from already-discovered instances of that agent.
+type skillRuleEntry struct {
+	rule     model.AgentRule
+	fileDirs []string
+}
+
+// runSkillDiscoveryParallel performs a global skill scan: all unique skill
+// directories are walked once each, then results are attributed to agents.
+// Per-rule SkillRule parameters (max_depth, max_size_kb) are respected by
+// computing the most permissive limits across all rules that share a path,
+// ensuring no rule's custom limits are silently ignored.
+func (e *Engine) runSkillDiscoveryParallel(result *Result, errs *errCollector) {
+	// Build the skill-enabled rule index
+	var entries []skillRuleEntry
 	for _, r := range e.rules.Agents {
 		if r.Skills == nil || !r.Skills.Enabled {
 			continue
 		}
-
-		// Collect file-evidence directories from already-discovered
-		// instances of this agent to seed auto-probe
 		var fileDirs []string
 		for i := range result.Agents {
 			if result.Agents[i].Name == r.Name {
@@ -159,106 +347,173 @@ func (e *Engine) Run() (*Result, error) {
 				}
 			}
 		}
+		entries = append(entries, skillRuleEntry{rule: r, fileDirs: fileDirs})
+	}
+	if len(entries) == 0 {
+		return
+	}
 
-		var skillDir string
-		skills, err := e.skillDiscover.DiscoverSkillsWithProbe(r, fileDirs, &skillDir)
+	// Collect all unique scan paths + auto-probe dirs across all rules.
+	// Track the most permissive max_depth / max_size_kb across all rules
+	// that share a path, so per-rule custom limits are respected.
+	uniqPaths := make(map[string]bool)
+	dirToEntryIdx := make(map[string][]int) // path → which entry indices care about it
+	for ei, entry := range entries {
+		paths, err := config.ResolveSkillPaths(entry.rule.Skills.ScanPaths)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("skill discovery for %s: %v", r.Name, err))
+			errs.add(fmt.Sprintf("skill discovery for %s: %v", entry.rule.Name, err))
 			continue
 		}
-
-		if len(skills) > 0 || skillDir != "" {
-			// Attach skills to already-discovered instances
-			found := false
-			for i := range result.Agents {
-				if result.Agents[i].Name == r.Name {
-					found = true
-					result.Agents[i].Skills = append(result.Agents[i].Skills, skills...)
-					if skillDir != "" && result.Agents[i].SkillDir == "" {
-						result.Agents[i].SkillDir = skillDir
-					}
+		for _, p := range paths {
+			uniqPaths[p] = true
+			dirToEntryIdx[p] = append(dirToEntryIdx[p], ei)
+		}
+		// Auto-probe
+		sr := entry.rule.Skills
+		if (sr.AutoDiscover == nil || *sr.AutoDiscover) && len(entry.fileDirs) > 0 {
+			probed := skill.ProbeSkillDirs(entry.fileDirs)
+			for _, probePath := range probed {
+				// Skip already-scanned explicit paths
+				if uniqPaths[probePath] {
+					continue
 				}
-			}
-			// If no agent was discovered by other means, create a
-			// ghost entry anchored by skill discovery
-			if !found && len(skills) > 0 {
-				agent := model.DiscoveredAgent{
-					Name:        r.Name,
-					DisplayName: r.DisplayName,
-					Confidence:  model.Confidence(r.MinConfidence),
-					AssetType:   model.AssetTypeFile, // skill files are file-system evidence
-					Skills:      skills,
-					SkillDir:    skillDir,
-				}
-				result.Agents = append(result.Agents, agent)
+				uniqPaths[probePath] = true
+				dirToEntryIdx[probePath] = append(dirToEntryIdx[probePath], ei)
 			}
 		}
 	}
 
-	// Phase 6: Package manager scanning (npm, pip, apt, brew, cargo, gem, etc.)
-	pkgAgents := e.pkgScanner.Scan(e.rules.Agents)
-	result.Agents = append(result.Agents, pkgAgents...)
+	// Walk each unique path once, in parallel.
+	// Cache: path → skills, so multiple agents sharing the same path reuse results.
+	type scanResult struct {
+		skills []model.Skill
+		dir    string
+	}
+	var pathCacheMu sync.Mutex
+	pathCache := make(map[string]scanResult)
 
-	// Phase 7: Binary-in-PATH scanning (which <name>, version extraction)
-	binaryAgents := e.binaryScanner.Scan(e.rules.Agents)
-	result.Agents = append(result.Agents, binaryAgents...)
+	concurrency := max(1, runtime.NumCPU())
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
 
-	// Phase 8: Command-based probing (type + version via execution)
-	probeAgents := e.probeScanner.Scan(e.rules.Agents)
-	result.Agents = append(result.Agents, probeAgents...)
+	for path := range uniqPaths {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(p string) {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-	// Deduplicate within each type first (e.g. two "possible" process entries)
-	result.Agents = deduplicateAgents(result.Agents)
+			// Check if we already scanned this exact path
+			pathCacheMu.Lock()
+			if _, ok := pathCache[p]; ok {
+				pathCacheMu.Unlock()
+				return
+			}
+			pathCacheMu.Unlock()
 
-	// Cross-type merge: consolidate multiple evidence types for the same
-	// agent name into a single entry.  When process evidence confirms the
-	// agent, all other evidence types (file, binary, probe, package) are
-	// merged as supporting signals and the overall confidence is promoted.
-	result.Agents = mergeCrossType(result.Agents)
+			// Compute the most permissive SkillRule limits across all
+			// rules that reference this path, so per-rule max_depth /
+			// max_size_kb settings are honoured (not silently replaced
+			// by GlobalSkillRule defaults).
+			sr := computeScanLimitsForPath(p, dirToEntryIdx, entries)
+			skills := e.skillDiscover.ScanPath(p, sr)
+			if len(skills) > 0 {
+				pathCacheMu.Lock()
+				pathCache[p] = scanResult{skills: skills, dir: p}
+				pathCacheMu.Unlock()
+			}
+		}(path)
+	}
+	wg.Wait()
 
-	// Populate summary
-	e.populateSummary(result, errors)
+	// Attribute scan results to each agent entry.
+	for ei, entry := range entries {
+		var allSkills []model.Skill
+		var firstDir string
 
-	return result, nil
-}
+		// Collect skills from paths attributed to this entry.
+		pathCacheMu.Lock()
+		for path, entryIndices := range dirToEntryIdx {
+			for _, idx := range entryIndices {
+				if idx == ei {
+					if res, ok := pathCache[path]; ok {
+						if firstDir == "" {
+							firstDir = res.dir
+						}
+						// Clone skills for this agent to avoid shared slice issues
+						allSkills = append(allSkills, res.skills...)
+					}
+					break
+				}
+			}
+		}
+		pathCacheMu.Unlock()
 
-func (e *Engine) extractAgentConfigs(agent *model.DiscoveredAgent) {
-	for _, r := range e.rules.Agents {
-		if r.Name != agent.Name || r.Config == nil {
+		if len(allSkills) == 0 && firstDir == "" {
 			continue
 		}
-		cfgRule := r.Config
-		configData := make(map[string]any)
 
-		for _, cfgPath := range cfgRule.Paths {
-			expandedPath, err := config.ExpandPath(cfgPath)
-			if err != nil {
-				continue
-			}
-			data, err := os.ReadFile(expandedPath)
-			if err != nil {
-				continue
-			}
-			parsed := parseConfigFormat(data, cfgRule.Format)
-			for targetKey, sourcePath := range cfgRule.FieldMap {
-				if val := getNestedValue(parsed, sourcePath); val != nil {
-					configData[targetKey] = val
+		// Attach skills to already-discovered instances
+		found := false
+		for i := range result.Agents {
+			if result.Agents[i].Name == entry.rule.Name {
+				found = true
+				result.Agents[i].Skills = append(result.Agents[i].Skills, allSkills...)
+				if firstDir != "" && result.Agents[i].SkillDir == "" {
+					result.Agents[i].SkillDir = firstDir
 				}
 			}
 		}
-		if len(configData) > 0 {
-			if agent.Config == nil {
-				agent.Config = make(map[string]any)
+		if !found && len(allSkills) > 0 {
+			agent := model.DiscoveredAgent{
+				Name:        entry.rule.Name,
+				DisplayName: entry.rule.DisplayName,
+				Confidence:  model.Confidence(entry.rule.MinConfidence),
+				AssetType:   model.AssetTypeFile,
+				Skills:      allSkills,
+				SkillDir:    firstDir,
 			}
-			for k, v := range configData {
-				agent.Config[k] = v
-			}
-			if agent.Version == "" {
-				if ver, ok := configData["version"]; ok {
-					agent.Version = fmt.Sprintf("%v", ver)
-				}
-			}
+			result.Agents = append(result.Agents, agent)
 		}
+	}
+}
+
+// computeScanLimitsForPath builds a SkillRule with the most permissive
+// max_depth and max_size_kb across all rules that reference the given path.
+// This ensures that per-rule custom limits are honoured when multiple rules
+// share the same scan path in the global walk.
+func computeScanLimitsForPath(path string, dirToEntryIdx map[string][]int, entries []skillRuleEntry) *model.SkillRule {
+	maxDepth := 0
+	maxSizeKB := 0
+
+	for _, idx := range dirToEntryIdx[path] {
+		if idx < 0 || idx >= len(entries) {
+			continue
+		}
+		sr := entries[idx].rule.Skills
+		if sr == nil {
+			continue
+		}
+		if sr.MaxDepth > maxDepth {
+			maxDepth = sr.MaxDepth
+		}
+		if sr.MaxSizeKB > maxSizeKB {
+			maxSizeKB = sr.MaxSizeKB
+		}
+	}
+
+	// Fall back to defaults (matching GlobalSkillRule) when no rule
+	// specified a custom limit.
+	if maxDepth == 0 {
+		maxDepth = 3
+	}
+	if maxSizeKB == 0 {
+		maxSizeKB = 100
+	}
+
+	return &model.SkillRule{
+		MaxDepth:  maxDepth,
+		MaxSizeKB: maxSizeKB,
 	}
 }
 

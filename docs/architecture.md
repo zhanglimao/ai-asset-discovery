@@ -89,11 +89,14 @@
 - **职责**：扫描编排器
 - **核心方法**：
   - `LoadRules(path)` — 从文件/目录加载 YAML 规则
-  - `Run()` — 执行 8 阶段扫描流水线 + 后处理（去重合并）
+  - `Run()` — 执行并行多阶段扫描流水线 + 后处理（去重合并）
+  - `extractConfigsParallel()` — 并行配置提取（bounded goroutine pool）
+  - `runSkillDiscoveryParallel()` — 全局技能扫描（去重路径，per-rule 限制合并）
   - `populateSummary()` — 生成统计摘要
   - `deduplicateAgents()` — 按 name + asset_type 去重合并
   - `mergeCrossType()` — 跨 asset_type 合并同 name 的多条证据
   - `LoadRulesFromBytes(data)` — 直接从 YAML 字节加载规则
+- **并行架构**：使用 `errCollector` / `agentCollector` 线程安全收集器，扫描阶段分两批并行执行
 - **依赖**：所有 Scanner、Loader、Discoverer
 
 ### `internal/scanner/process.go`（+ `process_linux.go` / `process_darwin.go` / `process_windows.go`）
@@ -116,27 +119,36 @@
 - **必需/可选逻辑**：有 `required: true` 则必须命中至少一个，否则规则无输出
 
 ### `internal/scanner/package.go`
-- **职责**：通过包管理器（npm、pip、apt、brew、cargo、gem）检测已安装的 AI 软件包
+- **职责**：通过包管理器（npm、pip、apt、brew、cargo、gem 等）检测已安装的 AI 软件包
 - **核心逻辑**：
+  - `defaultPackageManagers()` — 返回 7 个内置包管理器默认配置（npm、pip、pip3、apt、brew、cargo、gem），可通过 YAML 规则中的 `package_managers` 节覆盖或扩展
+  - `RegisterManager(name, mgr)` / `SetManagers(mgrs)` — 注册/替换包管理器定义，供引擎在加载规则时调用
   - `scanPackageRule(rule)` — 对每条规则的 managers 列表，调用相应包管理器的 list 命令
-  - `listPackages(mgr)` — 执行 `npm list -g` / `pip list` / `apt list --installed` 等，带 3s 超时，结果按 manager 名称缓存
+  - `listPackages(mgr)` — 执行 `npm list -g` / `pip list` / `apt list --installed` 等，使用 manager 定义的 Timeout（默认 3s），结果按 manager 名称缓存
+  - `queryPackageManager(mgr)` — 实际执行命令，同时捕获 stdout + stderr（部分包管理器在非零退出码下仍输出有效数据）
+  - `parsePackageList(format, output)` — 根据 `OutputFormat` 字段分发到对应解析器（json_npm、json_pip、text_apt 等），解析器为包级函数
   - `matchPackage(name, patterns)` — 支持 exact 和 regex 匹配
-- **超时 & 缓存**：每个包管理器命令有 3 秒超时保护；同一 manager 的结果会被缓存，避免对多条规则重复执行
-- **支持的包管理器**：npm、pip/pip3、apt、brew、cargo、gem
+- **规则驱动**：包管理器定义不再硬编码在 Go 代码中，而是通过 YAML 规则文件的 `package_managers` 顶层节定义，支持自定义 command、list_args、output_format、timeout
+- **超时 & 缓存**：每个包管理器命令使用 manager 定义的 Timeout（默认 3 秒）；同一 manager 的结果会被缓存，避免对多条规则重复执行
+- **输出捕获**：同时捕获 stdout 和 stderr，stdout 优先；不因非零退出码而丢弃有效输出
+- **内置包管理器**：npm、pip/pip3、apt、brew、cargo、gem
 
 ### `internal/scanner/binary.go`
 - **职责**：通过 `$PATH` 扫描已安装的 CLI 二进制程序
 - **核心逻辑**：
   - `scanBinaryRule(rule)` — `exec.LookPath(name)` 查找二进制
-  - `getVersion(path, flag, regex)` — 执行 `binary --version` 并正则提取版本号，带 5s 超时
+  - `getVersion(path, flag, regex)` — 执行 `binary --version` 并正则提取版本号，带 5s 超时；同时捕获 stdout + stderr（许多 CLI 工具将版本信息输出到 stderr）
   - `findInPath(pp)` — 对 regex 模式，遍历 PATH 目录进行文件名匹配
+  - `getPathEnv()` — 读取 `$PATH` 环境变量；当 `$PATH` 为空时使用平台相关 fallback（Linux/macOS: `/usr/local/bin:/usr/bin:/bin`，Windows: `System32;Windows;Wbem`）
 - **版本提取**：通过 `version_flag`（如 `--version`、`-V`）获取输出，再用 `version_regex` 提取
+- **输出捕获**：同时捕获 stdout 和 stderr，stdout 优先回退到 stderr，确保 Python 包、Rust CLI 等输出到 stderr 的工具也能正确提取版本
 
 ### `internal/scanner/probe.go`
 - **职责**：通过执行命令探测 Agent 类型并提取版本
 - **核心逻辑**：
   - `probeRule(rule)` — `exec.LookPath` 查找命令 → 执行 → 可选 ExpectedOutput 验证，带 5s 超时
   - `extractProbeVersion(output, regex)` — 正则提取版本号
+- **输出捕获**：同时捕获 stdout 和 stderr，stdout 优先回退到 stderr，确保将版本信息输出到 stderr 的工具（Python 包、Rust CLI、npm 包等）也能被正确检测和提取版本
 - **输出截断**：命令输出截断至 500 字符
 
 ### `internal/platform/paths.go`
@@ -295,8 +307,8 @@ Result
 └──────┬───────┘
        │
 ┌──────▼───────┐
-│ 6. 配置提取   │  extractAgentConfigs() →
-│              │  读取配置文件 → 按 format 解析 → field_map 提取
+│ 6. 配置提取   │  extractConfigsParallel() →
+│              │  并行读取配置文件 → 按 format 解析 → field_map 提取
 └──────┬───────┘
        │
 ┌──────▼───────┐
@@ -477,8 +489,9 @@ sequenceDiagram
     IDE-->>Engine: []DiscoveredAgent (ide_extension type)
 
     Note over Engine: Phase 4: Config Extraction
-    loop For each matched agent
-        Engine->>Engine: extractAgentConfigs(agent)
+    Engine->>Engine: extractConfigsParallel(agents)
+    loop For each matched agent (bounded goroutine pool)
+        Engine->>Engine: extractSingleAgentConfig(agent)
         Engine->>Engine: ReadFile + ParseFormat
         Engine->>Engine: field_map extraction
     end
@@ -622,9 +635,10 @@ sequenceDiagram
 
 ### 添加新的包管理器支持
 
-1. 在 `internal/scanner/package.go` 的 `knownManagers` map 中添加新的管理器配置
-2. 实现对应的 `parse*List()` 解析函数
-3. 更新 `model.PackageRule` 的 `Managers` 默认列表（`internal/rule/loader.go` 的 `normalizeFeatures`）
+1. 在 YAML 规则文件的 `package_managers` 顶层节中添加新的管理器定义（指定 `command`、`list_args`、`output_format`、`timeout`）
+2. 如果 `output_format` 是已有类型（`json_npm`、`json_pip`、`text_apt`、`text_brew`、`text_cargo`、`text_gem`、`text_generic`），无需修改 Go 代码
+3. 如果需要新的解析格式，在 `internal/scanner/package.go` 中实现 `parseXxxList(output string) []pkgInfo` 函数，并在 `parsePackageList()` 分发器中添加对应 case
+4. 在 agent 规则的 `features.packages` 中引用该管理器检测的包名（如 `@openai/codex`）
 
 ### 添加新的匹配类型
 

@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
-
-	"github.com/dlclark/regexp2"
 
 	"github.com/ai-asset-discovery/internal/model"
 )
@@ -26,13 +25,27 @@ func (ps *ProcessScanner) Scan(rules []model.AgentRule) ([]model.DiscoveredAgent
 		return nil, fmt.Errorf("list processes: %w", err)
 	}
 
-	// Filter out our own process and its parent shell to avoid
-	// self-detection (e.g. bash wrapping discovery with agent cmdline args).
+	// Filter out our own process, its descendants, and the parent shell
+	// to avoid self-detection (e.g. python3 subprocess spawned by discovery
+	// whose cmdline contains agent names like "codex").
 	selfPID := os.Getpid()
+	// Build a set of PIDs to exclude: self + all descendants.
+	excludedPIDs := make(map[int]bool)
+	excludedPIDs[selfPID] = true
+	// Mark descendants iteratively (children of excluded PIDs).
+	for changed := true; changed; {
+		changed = false
+		for _, p := range procs {
+			if excludedPIDs[p.PPID] && !excludedPIDs[p.PID] {
+				excludedPIDs[p.PID] = true
+				changed = true
+			}
+		}
+	}
 	filtered := make([]model.ProcessInfo, 0, len(procs))
 	for _, p := range procs {
-		// Skip ourselves
-		if p.PID == selfPID {
+		// Skip ourselves and all descendant processes
+		if excludedPIDs[p.PID] {
 			continue
 		}
 		// Skip bash/shell processes whose cmdline contains "/discovery"
@@ -220,15 +233,11 @@ func (ps *ProcessScanner) matchPattern(p model.PatternRule, value string) bool {
 	case "contains":
 		return strings.Contains(strings.ToLower(value), strings.ToLower(p.Value))
 	case "regex":
-		re, err := regexp2.Compile(p.Value, regexp2.None)
+		re, err := regexp.Compile(p.Value)
 		if err != nil {
 			return false
 		}
-		matched, err := re.MatchString(value)
-		if err != nil {
-			return false
-		}
-		return matched
+		return re.MatchString(value)
 	default:
 		return strings.Contains(strings.ToLower(value), strings.ToLower(p.Value))
 	}
@@ -287,16 +296,16 @@ func isUpper(c byte) bool {
 }
 
 func (ps *ProcessScanner) extractVersion(proc model.ProcessInfo, versionRegex string) string {
-	re, err := regexp2.Compile(versionRegex, regexp2.None)
+	re, err := regexp.Compile(versionRegex)
 	if err != nil {
 		return ""
 	}
 	// Search in command line first
-	if m, err := re.FindStringMatch(proc.CmdLine); err == nil && m != nil && len(m.Groups()) >= 2 {
-		return m.Groups()[1].String()
+	if matches := re.FindStringSubmatch(proc.CmdLine); len(matches) >= 2 {
+		return matches[1]
 	}
-	if m, err := re.FindStringMatch(proc.Executable); err == nil && m != nil && len(m.Groups()) >= 2 {
-		return m.Groups()[1].String()
+	if matches := re.FindStringSubmatch(proc.Executable); len(matches) >= 2 {
+		return matches[1]
 	}
 	return ""
 }

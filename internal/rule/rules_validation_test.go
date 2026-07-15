@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"testing"
-
-	"github.com/dlclark/regexp2"
 
 	"github.com/ai-asset-discovery/internal/model"
 )
@@ -386,8 +385,9 @@ func TestProcessRules_AndLogicRequiresMultipleFields(t *testing.T) {
 }
 
 func validateRegex(pattern string) error {
-	// Use regexp2 (PCRE-compatible) for validation since the scanner uses it.
-	_, err := regexp2.Compile(pattern, regexp2.None)
+	// Use stdlib regexp (RE2) for validation — this is what the scanner uses.
+	// RE2 guarantees linear-time matching and is the engine in Go's regexp package.
+	_, err := regexp.Compile(pattern)
 	if err != nil {
 		return fmt.Errorf("invalid regex: %w", err)
 	}

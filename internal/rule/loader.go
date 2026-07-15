@@ -47,6 +47,13 @@ func (l *Loader) LoadDir(dir string) (*model.RulesFile, error) {
 			return nil, fmt.Errorf("load %s: %w", name, err)
 		}
 		merged.Agents = append(merged.Agents, rf.Agents...)
+		// Merge package manager definitions
+		if merged.PackageManagers == nil {
+			merged.PackageManagers = make(map[string]model.PackageManagerDef)
+		}
+		for k, v := range rf.PackageManagers {
+			merged.PackageManagers[k] = v
+		}
 	}
 	return merged, nil
 }
@@ -123,8 +130,12 @@ func (l *Loader) normalizeFeatures(rule *model.AgentRule) {
 	// ── Package detection ──
 	if len(f.Packages) > 0 {
 		if rule.Package == nil {
+			// Default managers: query all common package managers.
+			// The scanner skips unavailable ones at runtime, so it's
+			// safe to include all. Rules can override by specifying
+			// an explicit package.managers field.
 			rule.Package = &model.PackageRule{
-				Managers: []string{"pip", "pip3", "npm", "apt", "brew"},
+				Managers: []string{"npm", "pip", "pip3", "apt", "brew", "cargo", "gem"},
 			}
 		}
 		for _, pkg := range f.Packages {

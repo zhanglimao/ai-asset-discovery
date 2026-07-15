@@ -478,7 +478,7 @@ agents:
       processes:
         - codex
       packages:
-        - openai/codex
+        - "@openai/codex"
     skills:
       enabled: true
 
@@ -1455,3 +1455,59 @@ agents:
         - NotebookLM
     skills:
       enabled: true
+
+# ============================================================
+# Package Manager Definitions (rule-driven)
+# ============================================================
+# Define custom package managers here. These override or augment
+# the built-in defaults. Each manager specifies:
+#   command:       The binary to invoke (must be in $PATH)
+#   list_args:     Arguments passed to the command to list packages
+#   output_format: Parser to use for the command output
+#   timeout:       Timeout in seconds (optional, default 3)
+#
+# Supported output_format values:
+#   json_npm    — npm list --json (nested dependencies object)
+#   json_pip    — pip list --format=json (flat array of {name, version})
+#   text_apt    — apt list --installed (name=ver ...)
+#   text_brew   — brew list --versions (name ver ...)
+#   text_cargo  — cargo install --list (name vver ...)
+#   text_gem    — gem list (name (ver, ...))
+#   text_generic — fallback: first token=package, second token=version
+# ============================================================
+package_managers:
+  npm:
+    command: npm
+    list_args: ["list", "-g", "--depth=0", "--json"]
+    output_format: json_npm
+    timeout: 10
+  pip:
+    command: pip
+    list_args: ["list", "--format=json"]
+    output_format: json_pip
+    timeout: 10
+  pip3:
+    command: pip3
+    list_args: ["list", "--format=json"]
+    output_format: json_pip
+    timeout: 10
+  apt:
+    command: apt
+    list_args: ["list", "--installed"]
+    output_format: text_apt
+    timeout: 10
+  brew:
+    command: brew
+    list_args: ["list", "--versions"]
+    output_format: text_brew
+    timeout: 10
+  cargo:
+    command: cargo
+    list_args: ["install", "--list"]
+    output_format: text_cargo
+    timeout: 10
+  gem:
+    command: gem
+    list_args: ["list"]
+    output_format: text_gem
+    timeout: 10

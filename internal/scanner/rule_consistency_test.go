@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
-
-	"github.com/dlclark/regexp2"
 
 	"github.com/ai-asset-discovery/internal/config"
 	"github.com/ai-asset-discovery/internal/model"
@@ -123,7 +122,7 @@ func generatePositiveValue(p model.PatternRule) (string, bool) {
 	case "contains":
 		return fmt.Sprintf("prefix_%s_suffix", p.Value), true
 	case "regex":
-		re, err := regexp2.Compile(p.Value, regexp2.None)
+		re, err := regexp.Compile(p.Value)
 		if err != nil {
 			return p.Value, false // can't compile
 		}
@@ -141,7 +140,7 @@ func generatePositiveValue(p model.PatternRule) (string, bool) {
 			"llama_index", // matches llamaindex patterns
 		}
 		for _, c := range candidates {
-			if matched, _ := re.MatchString(c); matched {
+			if re.MatchString(c) {
 				return c, true
 			}
 		}
@@ -259,13 +258,12 @@ func TestRuleToScanner_VersionRegexCompiles(t *testing.T) {
 			continue
 		}
 		t.Run(agent.Name, func(t *testing.T) {
-			re, err := regexp2.Compile(agent.Process.VersionRegex, regexp2.None)
+			_, err := regexp.Compile(agent.Process.VersionRegex)
 			if err != nil {
 				t.Errorf("version_regex %q does not compile: %v", agent.Process.VersionRegex, err)
 				return
 			}
-			// regexp2 requires counting capture groups differently — just verify it compiles
-			_ = re
+			// Verify it compiles with stdlib regexp (RE2) — same engine as scanner
 		})
 	}
 }
@@ -288,7 +286,7 @@ func TestRuleToScanner_RegexPatternsCompile(t *testing.T) {
 			if p.Type != "regex" {
 				continue
 			}
-			_, err := regexp2.Compile(p.Value, regexp2.None)
+			_, err := regexp.Compile(p.Value)
 			if err != nil {
 				t.Errorf("agent %q: regex pattern %q does not compile: %v", agent.Name, p.Value, err)
 			}

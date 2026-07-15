@@ -20,9 +20,10 @@
 12. [二进制 PATH 检测规则（Binary）](#二进制-path-检测规则binary)
 13. [置信度体系](#置信度体系)
 14. [匹配逻辑详解](#匹配逻辑详解)
-15. [路径规范](#路径规范)
-16. [实战案例](#实战案例)
-17. [常见陷阱](#常见陷阱)
+15. [自定义包管理器定义（package_managers）](#自定义包管理器定义package_managers)
+16. [路径规范](#路径规范)
+17. [实战案例](#实战案例)
+18. [常见陷阱](#常见陷阱)
 
 ---
 
@@ -38,12 +39,21 @@ agents:
     # ... 规则定义
   - name: agent-2
     # ... 规则定义
+
+# 可选：自定义包管理器定义（覆盖或扩展内置默认值）
+package_managers:
+  npm:
+    command: npm
+    list_args: ["list", "-g", "--depth=0", "--json"]
+    output_format: json_npm
+    timeout: 10
 ```
 
 - **`version`**：规则格式版本号，当前为 `"1.0"`
 - **`agents`**：规则数组，每项定义一个 Agent
+- **`package_managers`**（可选）：自定义包管理器定义，覆盖或扩展内置默认值（详见[自定义包管理器定义](#自定义包管理器定义package_managers)）
 
-支持从目录加载多个 `.yaml` / `.yml` 文件，引擎会自动合并所有规则。
+支持从目录加载多个 `.yaml` / `.yml` 文件，引擎会自动合并所有规则和 `package_managers` 定义。
 
 ---
 
@@ -101,7 +111,7 @@ agents:
 
 ```yaml
 features:
-  processes:                  # 进程名或命令行子串（区分大小写 contains 匹配）
+  processes:                  # 进程名或命令行子串（忽略大小写 contains 匹配）
     - claude-code
     - "claude code"
   packages:                   # 包管理器中的包名（exact 匹配）
@@ -179,6 +189,10 @@ probe:
 | `version_regex` | string | 否 | 从输出中提取版本的正则（第一捕获组） |
 | `expected_output` | string | 否 | 输出中必须包含的子串（大小写不敏感），空表示执行成功即匹配 |
 
+> **输出捕获**：命令执行时同时捕获 stdout 和 stderr。许多 CLI 工具（Python 包、Rust CLI、npm 包等）会将版本信息输出到 stderr 而非 stdout。系统会优先使用 stdout，若为空则回退到 stderr，确保所有工具都能被正确检测。
+>
+> **脚本支持**：`command` 可以是任何在 `$PATH` 中可执行的文件，包括 Shell 脚本（`#!/bin/bash`）、Python 脚本（`#!/usr/bin/env python3`）和编译后的二进制程序。Linux 内核通过 shebang 机制自动处理解释型脚本。
+
 ---
 
 ## 进程检测规则（Process）
@@ -220,15 +234,15 @@ process:
 ### 三种匹配类型（注：`word` 为 `normalizeFeatures` 自动生成的内部类型）
 
 ```yaml
-# exact：精确相等（区分大小写）
+# exact：精确相等（忽略大小写）
 - type: exact
   value: "claude-code"
 
-# contains：子串包含（区分大小写）
+# contains：子串包含（忽略大小写）
 - type: contains
   value: "Claude"
 
-# regex：正则表达式（.NET 兼容正则，支持反向引用、零宽断言等高级特性）
+# regex：正则表达式（Go RE2 语法，线性时间保证，不支持反向引用/零宽断言）
 - type: regex
   value: "^claude(-\w+)?$"
 
@@ -246,7 +260,7 @@ process:
 | `exact` | 字符串精确相等（忽略大小写） | `"omp"` 只匹配 `"omp"` |
 | `contains` | 子串包含（忽略大小写） | `"omp"` 匹配 `"WUDFCompanionHost"` |
 | `word` | 整词边界包含（忽略大小写） | `"omp"` 匹配 `"/usr/bin/omp"` 但不匹配 `"Companion"` |
-| `regex` | .NET 兼容正则 | `"^claude(-\w+)?$"` 匹配 `"claude-code"` |
+| `regex` | Go RE2 正则 | `"^claude(-\w+)?$"` 匹配 `"claude-code"` |
 
 > **注意**：`word` 类型是 `normalizeFeatures` 自动生成的内部类型，用于避免 `contains` 匹配中的误报。普通规则编写请使用 `exact` / `contains` / `regex`。
 
@@ -529,16 +543,18 @@ package:
 
 > **`version_regex`**：当包管理器返回的版本字符串格式不标准时（如 `"v1.2.3"`），可用此正则的捕获组提取干净版本号。
 
-### 支持的包管理器
+### 内置包管理器
 
-| manager | 命令 | 输出格式 |
-|---------|------|----------|
-| `npm` | `npm list -g --depth=0` | `├── package@version` |
-| `pip` / `pip3` | `pip list --format=json` | JSON 数组 |
-| `apt` | `apt list --installed` | `package/stable,now version arch` |
-| `brew` | `brew list --versions` | `package version1 version2` |
-| `cargo` | `cargo install --list` | `package v1.2.3:` |
-| `gem` | `gem list --local` | `package (1.2.3, 1.1.0)` |
+以下包管理器默认已注册，无需在 `package_managers` 节中定义。可通过 `package_managers` 节覆盖或添加新的管理器（详见[自定义包管理器定义](#自定义包管理器定义package_managers)）。
+
+| manager | 命令 | 输出格式 | output_format |
+|---------|------|----------|---------------|
+| `npm` | `npm list -g --depth=0 --json` | JSON (嵌套 dependencies) | `json_npm` |
+| `pip` / `pip3` | `pip list --format=json` | JSON 数组 | `json_pip` |
+| `apt` | `apt list --installed` | `package/stable,now version arch` | `text_apt` |
+| `brew` | `brew list --versions` | `package version1 version2` | `text_brew` |
+| `cargo` | `cargo install --list` | `package v1.2.3:` | `text_cargo` |
+| `gem` | `gem list` | `package (1.2.3, 1.1.0)` | `text_gem` |
 
 ### 匹配模式
 
@@ -577,8 +593,10 @@ binary:
 
 1. 对 `exact` / `contains` 类型调用 `exec.LookPath(value)` 查找二进制
 2. 对 `regex` 类型，遍历 `$PATH` 所有目录进行文件名匹配
-3. 找到后执行 `<binary> <version_flag>` 获取版本输出
+3. 找到后执行 `<binary> <version_flag>` 获取版本输出（同时捕获 stdout + stderr）
 4. 用 `version_regex` 捕获组提取版本号
+
+> **输出捕获**：版本命令执行时同时捕获 stdout 和 stderr，stdout 优先回退到 stderr。许多 CLI 工具（特别是 Python 包和 Rust CLI）将 `--version` 输出写到 stderr，此机制确保版本信息不会丢失。
 
 ---
 
@@ -595,6 +613,80 @@ binary:
 1. **进程检测**：单个字段命中 → `min_confidence`；≥2 个字段命中时：原置信度为 `ghost` → 提升至 `possible`；原置信度为其他值 → 提升至 `confirmed`
 2. **IDE 扩展检测**：命中 `agent_signals` → 自动提升至 `confirmed`
 3. **综合**：最终按各维度中最高置信度取值（跨类型合并时保留最高置信度）
+
+---
+
+## 自定义包管理器定义（package_managers）
+
+规则文件的 `package_managers` 顶层节允许你定义自定义包管理器，无需修改 Go 代码。这些定义覆盖或扩展内置默认值（npm、pip、pip3、apt、brew、cargo、gem）。
+
+### 数据结构
+
+```yaml
+package_managers:
+  <manager-name>:
+    command: <string>           # 要调用的二进制文件（必须在 $PATH 中）
+    list_args: [<string>, ...]  # 传给该命令的参数
+    output_format: <string>     # 使用的解析器（见下表）
+    timeout: <int>              # 可选：以秒为单位的超时时间（默认 3）
+```
+
+### 支持的 output_format 值
+
+| `output_format` | 预期输出格式 | 示例命令 |
+|-----------------|---------------------|---------------|
+| `json_npm` | 带有嵌套 `dependencies` 对象的 JSON | `npm list -g --depth=0 --json` |
+| `json_pip` | 包含 `{name, version}` 对象的 JSON 数组 | `pip list --format=json` |
+| `text_apt` | `name=ver ...` (每行一个包) | `apt list --installed` |
+| `text_brew` | `name ver1 ver2` (空格分隔) | `brew list --versions` |
+| `text_cargo` | `name vver:` (带有 `v` 前缀和 `:` 后缀) | `cargo install --list` |
+| `text_gem` | `name (1.2.3, 1.1.0)` (括号内的版本号) | `gem list` |
+| `text_generic` | 回退解析器：第一个 token 为包名，第二个 token 为版本号 | 任意 |
+
+### 示例：定义自定义包管理器
+
+```yaml
+package_managers:
+  # 覆盖 npm 的内置默认值（例如使用不同的超时时间）
+  npm:
+    command: npm
+    list_args: ["list", "-g", "--depth=0", "--json"]
+    output_format: json_npm
+    timeout: 15
+
+  # 添加 conda 作为新的包管理器
+  conda:
+    command: conda
+    list_args: ["list", "--json"]
+    output_format: json_pip    # conda list --json 产生的 {name, version} JSON 数组
+    timeout: 10
+
+  # 添加 yarn
+  yarn:
+    command: yarn
+    list_args: ["global", "list", "--json"]
+    output_format: json_npm    # yarn 全局列表产生的嵌套依赖 JSON
+    timeout: 15
+```
+
+定义了自定义管理器后，在 Agent 规则的 `features.packages` 字段中引用它：
+
+```yaml
+agents:
+  - name: my-agent
+    features:
+      packages:
+        - name: "some-package"
+          type: exact
+    # package.managers 会自动包含 conda 和 yarn，因为它们已注册
+```
+
+### 规则：如何注册管理器
+
+- 如果 `package_managers` 节存在于任何 YAML 规则文件中，引擎会调用 `RegisterManager()` 来注册每个定义。这些定义会添加到（或覆盖）内置默认值中。
+- 如果未定义 `package_managers` 节，则使用所有 7 个内置默认值。
+- 从目录加载时，多个 YAML 文件中的 `package_managers` 定义会被合并。
+- Agent 规则的 `package.managers` 列表默认包含所有已注册的管理器名称，除非被显式覆盖。
 
 ---
 
@@ -734,7 +826,7 @@ ide:
 
 **要点**：
 - `min_confidence: ghost`：仅为 Python 包依赖，不证明 Agent 在运行
-- `features.packages` 引擎默认检查 pip/npm/apt/brew 四个包管理器
+- `features.packages` 引擎默认检查所有已注册的包管理器（内置 7 个：npm、pip、pip3、apt、brew、cargo、gem）
 - 如需精确限定包管理器，可用详细语法 `package.managers: [pip]`
 
 ### 案例 3：IDE 扩展（GitHub Copilot）
@@ -791,7 +883,7 @@ ide:
 
 **要点**：
 - `paths` 使用 `os` 字段分别指定各平台路径
-- `features.processes` 同时匹配进程名和命令行，区分大小写
+- `features.processes` 同时匹配进程名和命令行，忽略大小写
 - 引擎自动过滤自身进程和 Shell 包装器，无需 `exe_patterns` 排除逻辑
 
 ---
@@ -848,22 +940,28 @@ ide:
 ```
 
 ### 4. 大小写敏感性
-`contains` 匹配**区分大小写**。如果需要大小写不敏感，添加变体：
+`contains` 和 `exact` 匹配均**忽略大小写**（内部使用 `strings.EqualFold` / `strings.ToLower`）。`regex` 类型使用 Go RE2 正则，默认区分大小写，如需不敏感请使用 `(?i)` 前缀：
 ```yaml
+# contains/exact 自动忽略大小写，以下两条等价
 cmd_patterns:
   - type: contains
-    value: "Claude"      # 大写 C
+    value: "Claude"      # 匹配 "claude", "CLAUDE", "Claude" 等
   - type: contains
-    value: "claude"      # 小写 c
+    value: "claude"      # 同上
+
+# regex 区分大小写，需手动添加 (?i)
+cmd_patterns:
+  - type: regex
+    value: "(?i)claude"  # 匹配所有大小写变体
 ```
 
 ### 5. Regex 中的特殊字符转义
 规则中正则表达式在 YAML 字符串内，`\` 需要双重转义：
 ```yaml
-# ❌ 错误：YAML 解析后变成 \d+，Go 正则不识
+# ❌ 错误：YAML 解析后 \d 变成非法转义字符（YAML 对未识别的 \x 转义行为不确定）
 version_regex: "version[= ]*(\d+\.\d+\.\d+)"
 
-# ✅ 正确：YAML 解析后 `\\d` 变成 `\d`
+# ✅ 正确：YAML 解析后 `\\d` 变成 `\d`，Go RE2 正则支持 \d
 version_regex: "version[= ]*([0-9]+\\.[0-9]+\\.[0-9]+)"
 ```
 

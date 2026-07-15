@@ -209,10 +209,37 @@ type SkillRule struct {
 type RulesFile struct {
 	Version string      `yaml:"version" json:"version"`
 	Agents  []AgentRule `yaml:"agents" json:"agents"`
+
+	// PackageManagers defines custom package managers that can be
+	// referenced by name in agent rules' package.managers field.
+	// When empty, built-in defaults are used.
+	PackageManagers map[string]PackageManagerDef `yaml:"package_managers,omitempty" json:"package_managers,omitempty"`
+}
+
+// PackageManagerDef defines how to query and parse a package manager's
+// output. This is rule-driven — no package manager is hardcoded in Go.
+type PackageManagerDef struct {
+	// Command is the executable name (must be in $PATH).
+	Command string `yaml:"command" json:"command"`
+
+	// ListArgs are the arguments to list installed packages.
+	ListArgs []string `yaml:"list_args" json:"list_args"`
+
+	// OutputFormat controls how the list output is parsed.
+	// Supported: json_npm, json_pip, text_apt, text_brew, text_cargo,
+	//            text_gem, text_generic
+	OutputFormat string `yaml:"output_format" json:"output_format"`
+
+	// Timeout is the maximum duration in seconds to wait for the
+	// list command. Default: 3.
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 }
 
 // PackageRule detects an agent via installed packages (npm, pip, apt, etc.).
 type PackageRule struct {
+	// Managers lists package manager names to query. Each name must
+	// correspond to a key in RulesFile.PackageManagers or a built-in
+	// default (npm, pip, pip3, apt, brew, cargo, gem).
 	Managers     []string         `yaml:"managers" json:"managers"`
 	Packages     []PackagePattern `yaml:"packages" json:"packages"`
 	VersionRegex string           `yaml:"version_regex,omitempty" json:"version_regex,omitempty"`

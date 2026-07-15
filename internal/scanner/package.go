@@ -5,49 +5,76 @@ import (
 	"encoding/json"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
-	"github.com/dlclark/regexp2"
+	"regexp"
 
 	"github.com/ai-asset-discovery/internal/model"
 )
 
 // PackageScanner detects agents via installed packages (npm, pip, apt, etc.).
 type PackageScanner struct {
-	cache map[string][]pkgInfo // per-manager package list cache
+	cache    map[string][]pkgInfo // per-manager package list cache
+	cacheMu  sync.Mutex
+	once     sync.Once                 // warmCache runs exactly once
+	warmed   bool                      // set to true after warmCache completes
+	managers map[string]PackageManager // manager definitions (built-in + rule-defined)
 }
 
-// NewPackageScanner creates a new PackageScanner.
+// NewPackageScanner creates a new PackageScanner with built-in defaults.
 func NewPackageScanner() *PackageScanner {
 	return &PackageScanner{
-		cache: make(map[string][]pkgInfo),
+		cache:    make(map[string][]pkgInfo),
+		managers: defaultPackageManagers(),
 	}
 }
 
 // PackageManager defines how to query a specific package manager.
 type PackageManager struct {
-	Name    string   // npm, pip, apt, brew, cargo, gem, etc.
-	Command string   // the executable to run
-	ListCmd []string // args to list installed packages, output "name version" per line
+	Name         string   // npm, pip, apt, brew, cargo, gem, etc.
+	Command      string   // the executable to run
+	ListCmd      []string // args to list installed packages
+	OutputFormat string   // parsing strategy: json_npm, json_pip, text_apt, etc.
+	Timeout      int      // timeout in seconds (default 3)
 }
 
-// Known package managers with their list commands.
-// Output convention: one package per line, "name=version" or "name version".
-var knownManagers = map[string]PackageManager{
-	"npm":   {Name: "npm", Command: "npm", ListCmd: []string{"list", "-g", "--depth=0", "--json"}},
-	"pip":   {Name: "pip", Command: "pip", ListCmd: []string{"list", "--format=json"}},
-	"pip3":  {Name: "pip3", Command: "pip3", ListCmd: []string{"list", "--format=json"}},
-	"apt":   {Name: "apt", Command: "apt", ListCmd: []string{"list", "--installed"}},
-	"brew":  {Name: "brew", Command: "brew", ListCmd: []string{"list", "--versions"}},
-	"cargo": {Name: "cargo", Command: "cargo", ListCmd: []string{"install", "--list"}},
-	"gem":   {Name: "gem", Command: "gem", ListCmd: []string{"list", "--local"}},
+// SetManagers replaces the scanner's manager definitions with the given set.
+// Called by the engine when custom package_managers are defined in rules.
+func (ps *PackageScanner) SetManagers(mgrs map[string]PackageManager) {
+	ps.managers = mgrs
+}
+
+// RegisterManager adds or replaces a single package manager definition.
+func (ps *PackageScanner) RegisterManager(name string, mgr PackageManager) {
+	if ps.managers == nil {
+		ps.managers = make(map[string]PackageManager)
+	}
+	mgr.Name = name
+	ps.managers[name] = mgr
+}
+
+// defaultPackageManagers returns the built-in package manager definitions.
+// These serve as defaults when no custom package_managers are specified in rules.
+func defaultPackageManagers() map[string]PackageManager {
+	return map[string]PackageManager{
+		"npm":   {Name: "npm", Command: "npm", ListCmd: []string{"list", "-g", "--depth=0", "--json"}, OutputFormat: "json_npm", Timeout: 3},
+		"pip":   {Name: "pip", Command: "pip", ListCmd: []string{"list", "--format=json"}, OutputFormat: "json_pip", Timeout: 3},
+		"pip3":  {Name: "pip3", Command: "pip3", ListCmd: []string{"list", "--format=json"}, OutputFormat: "json_pip", Timeout: 3},
+		"apt":   {Name: "apt", Command: "apt", ListCmd: []string{"list", "--installed"}, OutputFormat: "text_apt", Timeout: 3},
+		"brew":  {Name: "brew", Command: "brew", ListCmd: []string{"list", "--versions"}, OutputFormat: "text_brew", Timeout: 3},
+		"cargo": {Name: "cargo", Command: "cargo", ListCmd: []string{"install", "--list"}, OutputFormat: "text_cargo", Timeout: 3},
+		"gem":   {Name: "gem", Command: "gem", ListCmd: []string{"list", "--local"}, OutputFormat: "text_gem", Timeout: 3},
+	}
 }
 
 // Scan runs package detection for all rules that have PackageRule configured.
 func (ps *PackageScanner) Scan(rules []model.AgentRule) []model.DiscoveredAgent {
-	var results []model.DiscoveredAgent
+	// Eagerly warm all package manager caches in parallel before scanning rules.
+	ps.warmCache()
 
+	var results []model.DiscoveredAgent
 	for _, rule := range rules {
 		if rule.Package == nil {
 			continue
@@ -58,12 +85,93 @@ func (ps *PackageScanner) Scan(rules []model.AgentRule) []model.DiscoveredAgent 
 	return results
 }
 
+// warmCache runs all available package manager list commands in parallel
+// and populates the cache. Safe to call multiple times — only the first
+// call does work.
+func (ps *PackageScanner) warmCache() {
+	ps.once.Do(func() {
+		// Collect available managers (LookPath check is fast, do it sequentially first)
+		type mgrEntry struct {
+			key string
+			mgr PackageManager
+		}
+		var available []mgrEntry
+		for key, mgr := range ps.managers {
+			if _, err := exec.LookPath(mgr.Command); err == nil {
+				available = append(available, mgrEntry{key: key, mgr: mgr})
+			}
+		}
+		if len(available) == 0 {
+			ps.warmed = true
+			return
+		}
+
+		// Run list commands in parallel
+		type listResult struct {
+			key  string
+			pkgs []pkgInfo
+		}
+		resultCh := make(chan listResult, len(available))
+		var wg sync.WaitGroup
+
+		for _, entry := range available {
+			wg.Add(1)
+			go func(key string, mgr PackageManager) {
+				defer wg.Done()
+				pkgs := ps.queryPackageManager(mgr)
+				resultCh <- listResult{key: key, pkgs: pkgs}
+			}(entry.key, entry.mgr)
+		}
+
+		go func() {
+			wg.Wait()
+			close(resultCh)
+		}()
+
+		ps.cacheMu.Lock()
+		for r := range resultCh {
+			ps.cache[r.key] = r.pkgs
+		}
+		ps.warmed = true
+		ps.cacheMu.Unlock()
+	})
+}
+
+func (ps *PackageScanner) queryPackageManager(mgr PackageManager) []pkgInfo {
+	timeoutSec := mgr.Timeout
+	if timeoutSec <= 0 {
+		timeoutSec = 3
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSec)*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, mgr.Command, mgr.ListCmd...)
+	// Capture both stdout and stderr. Package managers sometimes exit
+	// with non-zero status while still producing valid output on stdout
+	// (e.g. pip deprecation warnings, npm peer-dependency warnings).
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	_ = cmd.Run()
+
+	output := stdout.String()
+	if output == "" {
+		// Some tools (rare) may write structured data to stderr.
+		output = stderr.String()
+	}
+	if output == "" {
+		return nil
+	}
+
+	return parsePackageList(mgr.OutputFormat, output)
+}
+
 func (ps *PackageScanner) scanPackageRule(rule model.AgentRule) []model.DiscoveredAgent {
 	pr := rule.Package
 	var results []model.DiscoveredAgent
 
 	for _, mgrName := range pr.Managers {
-		mgr, ok := knownManagers[strings.ToLower(mgrName)]
+		mgr, ok := ps.managers[strings.ToLower(mgrName)]
 		if !ok {
 			continue
 		}
@@ -113,46 +221,27 @@ type pkgInfo struct {
 }
 
 func (ps *PackageScanner) listPackages(mgr PackageManager) []pkgInfo {
-	if pkgs, ok := ps.cache[mgr.Name]; ok {
+	ps.cacheMu.Lock()
+	if pkgs, ok := ps.cache[mgr.Name]; ok || ps.warmed {
+		ps.cacheMu.Unlock()
 		return pkgs
 	}
+	ps.cacheMu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, mgr.Command, mgr.ListCmd...)
-	out, err := cmd.Output()
-	if err != nil {
-		ps.cache[mgr.Name] = nil
-		return nil
-	}
-
-	var pkgs []pkgInfo
-
-	output := string(out)
-
-	switch mgr.Name {
-	case "npm":
-		pkgs = ps.parseNPMList(output)
-	case "pip", "pip3":
-		pkgs = ps.parsePipList(output)
-	case "apt":
-		pkgs = ps.parseAptList(output)
-	case "brew":
-		pkgs = ps.parseBrewList(output)
-	case "cargo":
-		pkgs = ps.parseCargoList(output)
-	case "gem":
-		pkgs = ps.parseGemList(output)
-	default:
-		pkgs = ps.parseGenericList(output)
-	}
-
+	// Fallback: if warmCache wasn't called, query synchronously
+	pkgs := ps.queryPackageManager(mgr)
+	ps.cacheMu.Lock()
 	ps.cache[mgr.Name] = pkgs
+	ps.cacheMu.Unlock()
 	return pkgs
 }
 
 func (ps *PackageScanner) parseNPMList(output string) []pkgInfo {
+	return parseNPMList(output)
+}
+
+// parseNPMList parses `npm list` output (JSON or tree-view format).
+func parseNPMList(output string) []pkgInfo {
 	// npm list -g --depth=0 --json produces JSON output.
 	// Try JSON first, then fall back to tree-view format.
 
@@ -217,7 +306,7 @@ func parseNPMJSON(output string) []pkgInfo {
 	return pkgs
 }
 
-func (ps *PackageScanner) parsePipList(output string) []pkgInfo {
+func parsePipList(output string) []pkgInfo {
 	var raw []struct {
 		Name    string `json:"name"`
 		Version string `json:"version"`
@@ -234,7 +323,7 @@ func (ps *PackageScanner) parsePipList(output string) []pkgInfo {
 	return pkgs
 }
 
-func (ps *PackageScanner) parseAptList(output string) []pkgInfo {
+func parseAptList(output string) []pkgInfo {
 	var pkgs []pkgInfo
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -257,7 +346,7 @@ func (ps *PackageScanner) parseAptList(output string) []pkgInfo {
 	return pkgs
 }
 
-func (ps *PackageScanner) parseBrewList(output string) []pkgInfo {
+func parseBrewList(output string) []pkgInfo {
 	var pkgs []pkgInfo
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -270,7 +359,7 @@ func (ps *PackageScanner) parseBrewList(output string) []pkgInfo {
 	return pkgs
 }
 
-func (ps *PackageScanner) parseCargoList(output string) []pkgInfo {
+func parseCargoList(output string) []pkgInfo {
 	var pkgs []pkgInfo
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -287,7 +376,7 @@ func (ps *PackageScanner) parseCargoList(output string) []pkgInfo {
 	return pkgs
 }
 
-func (ps *PackageScanner) parseGemList(output string) []pkgInfo {
+func parseGemList(output string) []pkgInfo {
 	var pkgs []pkgInfo
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -306,7 +395,7 @@ func (ps *PackageScanner) parseGemList(output string) []pkgInfo {
 	return pkgs
 }
 
-func (ps *PackageScanner) parseGenericList(output string) []pkgInfo {
+func parseGenericList(output string) []pkgInfo {
 	var pkgs []pkgInfo
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -318,6 +407,38 @@ func (ps *PackageScanner) parseGenericList(output string) []pkgInfo {
 	return pkgs
 }
 
+// parsePackageList dispatches to the appropriate parser based on output_format.
+// This is the single entry point for parsing package manager output — no
+// manager-specific logic is hardcoded in the scanner, everything is driven
+// by the output_format field from the manager definition.
+func parsePackageList(format, output string) []pkgInfo {
+	switch format {
+	case "json_npm":
+		return parseNPMList(output)
+	case "json_pip":
+		return parsePipList(output)
+	case "text_apt":
+		return parseAptList(output)
+	case "text_brew":
+		return parseBrewList(output)
+	case "text_cargo":
+		return parseCargoList(output)
+	case "text_gem":
+		return parseGemList(output)
+	case "text_generic":
+		return parseGenericList(output)
+	default:
+		// Unknown format — try JSON first (most common), then generic text.
+		if pkgs := parseNPMList(output); len(pkgs) > 0 {
+			return pkgs
+		}
+		if pkgs := parsePipList(output); len(pkgs) > 0 {
+			return pkgs
+		}
+		return parseGenericList(output)
+	}
+}
+
 func (ps *PackageScanner) matchPackage(name string, patterns []model.PackagePattern) bool {
 	for _, p := range patterns {
 		switch p.Type {
@@ -326,12 +447,11 @@ func (ps *PackageScanner) matchPackage(name string, patterns []model.PackagePatt
 				return true
 			}
 		case "regex":
-			re, err := regexp2.Compile(p.Name, regexp2.None)
+			re, err := regexp.Compile(p.Name)
 			if err != nil {
 				continue
 			}
-			matched, _ := re.MatchString(name)
-			if matched {
+			if re.MatchString(name) {
 				return true
 			}
 		default:
@@ -344,12 +464,13 @@ func (ps *PackageScanner) matchPackage(name string, patterns []model.PackagePatt
 }
 
 func (ps *PackageScanner) extractVersion(text, versionRegex string) string {
-	re, err := regexp2.Compile(versionRegex, regexp2.None)
+	re, err := regexp.Compile(versionRegex)
 	if err != nil {
 		return ""
 	}
-	if m, err := re.FindStringMatch(text); err == nil && m != nil && len(m.Groups()) >= 2 {
-		return m.Groups()[1].String()
+	matches := re.FindStringSubmatch(text)
+	if len(matches) >= 2 {
+		return matches[1]
 	}
 	return ""
 }

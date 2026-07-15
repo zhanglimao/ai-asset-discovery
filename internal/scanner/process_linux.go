@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,14 +44,15 @@ func resolveUID(uid string) string {
 	return name
 }
 
-// listProcesses reads /proc on Linux.
+// listProcesses reads /proc on Linux, parallelizing per-PID reads.
 func (ps *ProcessScanner) listProcesses() ([]model.ProcessInfo, error) {
 	entries, err := os.ReadDir("/proc")
 	if err != nil {
 		return nil, fmt.Errorf("read /proc: %w", err)
 	}
 
-	var procs []model.ProcessInfo
+	// Collect PIDs first
+	var pids []int
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -59,10 +61,39 @@ func (ps *ProcessScanner) listProcesses() ([]model.ProcessInfo, error) {
 		if err != nil {
 			continue
 		}
-		proc := ps.readProc(pid)
-		if proc != nil {
-			procs = append(procs, *proc)
-		}
+		pids = append(pids, pid)
+	}
+
+	if len(pids) == 0 {
+		return nil, nil
+	}
+
+	// Parallelize /proc reading with a goroutine pool
+	concurrency := max(1, runtime.NumCPU())
+	sem := make(chan struct{}, concurrency)
+	results := make(chan *model.ProcessInfo, len(pids))
+	var wg sync.WaitGroup
+
+	for _, pid := range pids {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(p int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if proc := ps.readProc(p); proc != nil {
+				results <- proc
+			}
+		}(pid)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	procs := make([]model.ProcessInfo, 0, len(pids))
+	for proc := range results {
+		procs = append(procs, *proc)
 	}
 	return procs, nil
 }

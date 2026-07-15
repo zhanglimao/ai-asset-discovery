@@ -134,11 +134,16 @@ func TestParseNPMList_JSONPreferred(t *testing.T) {
 	if len(pkgs) != 2 {
 		t.Errorf("parseNPMList() got %d packages, want 2: %+v", len(pkgs), pkgs)
 	}
-	if pkgs[0].Name != "eslint" || pkgs[0].Version != "8.56.0" {
-		t.Errorf("parseNPMList()[0] = %s@%s, want eslint@8.56.0", pkgs[0].Name, pkgs[0].Version)
+	// Map iteration order is non-deterministic in Go; use a lookup map.
+	byName := make(map[string]string, len(pkgs))
+	for _, p := range pkgs {
+		byName[p.Name] = p.Version
 	}
-	if pkgs[1].Name != "typescript" || pkgs[1].Version != "5.3.3" {
-		t.Errorf("parseNPMList()[1] = %s@%s, want typescript@5.3.3", pkgs[1].Name, pkgs[1].Version)
+	if byName["eslint"] != "8.56.0" {
+		t.Errorf("parseNPMList() eslint version = %q, want 8.56.0", byName["eslint"])
+	}
+	if byName["typescript"] != "5.3.3" {
+		t.Errorf("parseNPMList() typescript version = %q, want 5.3.3", byName["typescript"])
 	}
 }
 
