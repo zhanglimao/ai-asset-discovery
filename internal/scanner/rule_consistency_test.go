@@ -117,6 +117,9 @@ func generatePositiveValue(p model.PatternRule) (string, bool) {
 	switch p.Type {
 	case "exact":
 		return p.Value, true
+	case "word":
+		// word-boundary match: value must appear as a whole word
+		return fmt.Sprintf("prefix %s suffix", p.Value), true
 	case "contains":
 		return fmt.Sprintf("prefix_%s_suffix", p.Value), true
 	case "regex":

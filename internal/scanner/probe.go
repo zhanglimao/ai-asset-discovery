@@ -1,9 +1,11 @@
 package scanner
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/dlclark/regexp2"
 
@@ -44,7 +46,10 @@ func (ps *ProbeScanner) probeRule(rule model.AgentRule) *model.DiscoveredAgent {
 	}
 
 	// Build command
-	cmd := exec.Command(cmdPath, pr.Args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, cmdPath, pr.Args...)
 	out, err := cmd.Output()
 	output := strings.TrimSpace(string(out))
 

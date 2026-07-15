@@ -126,7 +126,7 @@ features:
 
 | features 字段 | 转换为 | 行为 |
 |---|---|---|
-| `processes` | `process.name_patterns` + `cmd_patterns` | 每个值同时添加到 name 和 cmd，type=contains, weight=5/8 |
+| `processes` | `process.name_patterns` + `cmd_patterns` | 每个值同时添加到 name 和 cmd，type=word, weight=5/8 |
 | `packages` | `package.packages` | type=exact, managers 默认 `[pip, pip3, npm, apt, brew]` |
 | `binaries` | `binary.names` | type=exact, version_flag/version_regex 同步转发 |
 | `extensions` | `ide.ext_ids` | 追加到 ext_ids 列表（需配合 `ide.scan_paths` 指定扫描目录） |
@@ -217,7 +217,7 @@ process:
 | `value` | string | ✅ | 匹配值 |
 | `weight` | int | 否 | 权重（越高越可信），用于置信度提升 |
 
-### 三种匹配类型
+### 三种匹配类型（注：`word` 为 `normalizeFeatures` 自动生成的内部类型）
 
 ```yaml
 # exact：精确相等（区分大小写）
@@ -231,7 +231,24 @@ process:
 # regex：正则表达式（.NET 兼容正则，支持反向引用、零宽断言等高级特性）
 - type: regex
   value: "^claude(-\w+)?$"
+
+# word：整词边界匹配（内部使用，由 features.processes 自动生成）
+# 类似于 contains 但要求匹配值在字符串中作为独立单词出现，
+# 边界为字符串起止、非字母数字字符或大小写转换（CamelCase）。
+- type: word
+  value: "omp"
 ```
+
+### 四种匹配类型对比
+
+| 类型 | 匹配方式 | 示例 |
+|------|----------|------|
+| `exact` | 字符串精确相等（忽略大小写） | `"omp"` 只匹配 `"omp"` |
+| `contains` | 子串包含（忽略大小写） | `"omp"` 匹配 `"WUDFCompanionHost"` |
+| `word` | 整词边界包含（忽略大小写） | `"omp"` 匹配 `"/usr/bin/omp"` 但不匹配 `"Companion"` |
+| `regex` | .NET 兼容正则 | `"^claude(-\w+)?$"` 匹配 `"claude-code"` |
+
+> **注意**：`word` 类型是 `normalizeFeatures` 自动生成的内部类型，用于避免 `contains` 匹配中的误报。普通规则编写请使用 `exact` / `contains` / `regex`。
 
 ### match_logic 详解
 

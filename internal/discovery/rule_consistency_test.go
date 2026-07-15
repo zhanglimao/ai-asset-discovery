@@ -71,7 +71,7 @@ func TestRealRules_ParseAndValidate(t *testing.T) {
 // TestRealRules_ProcessRuleStructure validates process rule syntax.
 func TestRealRules_ProcessRuleStructure(t *testing.T) {
 	rf := loadRealRules(t)
-	validTypes := map[string]bool{"exact": true, "contains": true, "regex": true}
+	validTypes := map[string]bool{"exact": true, "contains": true, "regex": true, "word": true}
 
 	for _, agent := range rf.Agents {
 		if agent.Process == nil {

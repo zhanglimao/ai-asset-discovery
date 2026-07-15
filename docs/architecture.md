@@ -119,22 +119,23 @@
 - **职责**：通过包管理器（npm、pip、apt、brew、cargo、gem）检测已安装的 AI 软件包
 - **核心逻辑**：
   - `scanPackageRule(rule)` — 对每条规则的 managers 列表，调用相应包管理器的 list 命令
-  - `listPackages(mgr)` — 执行 `npm list -g` / `pip list` / `apt list --installed` 等
+  - `listPackages(mgr)` — 执行 `npm list -g` / `pip list` / `apt list --installed` 等，带 3s 超时，结果按 manager 名称缓存
   - `matchPackage(name, patterns)` — 支持 exact 和 regex 匹配
+- **超时 & 缓存**：每个包管理器命令有 3 秒超时保护；同一 manager 的结果会被缓存，避免对多条规则重复执行
 - **支持的包管理器**：npm、pip/pip3、apt、brew、cargo、gem
 
 ### `internal/scanner/binary.go`
 - **职责**：通过 `$PATH` 扫描已安装的 CLI 二进制程序
 - **核心逻辑**：
   - `scanBinaryRule(rule)` — `exec.LookPath(name)` 查找二进制
-  - `getVersion(path, flag, regex)` — 执行 `binary --version` 并正则提取版本号
+  - `getVersion(path, flag, regex)` — 执行 `binary --version` 并正则提取版本号，带 5s 超时
   - `findInPath(pp)` — 对 regex 模式，遍历 PATH 目录进行文件名匹配
 - **版本提取**：通过 `version_flag`（如 `--version`、`-V`）获取输出，再用 `version_regex` 提取
 
 ### `internal/scanner/probe.go`
 - **职责**：通过执行命令探测 Agent 类型并提取版本
 - **核心逻辑**：
-  - `probeRule(rule)` — `exec.LookPath` 查找命令 → 执行 → 可选 ExpectedOutput 验证
+  - `probeRule(rule)` — `exec.LookPath` 查找命令 → 执行 → 可选 ExpectedOutput 验证，带 5s 超时
   - `extractProbeVersion(output, regex)` — 正则提取版本号
 - **输出截断**：命令输出截断至 500 字符
 
@@ -189,7 +190,7 @@
   - `ProbeRule` — 命令探测规则（command + args + version_regex + expected_output）
   - `PathRule` — 简化路径规则
   - `ProcessRule` — 进程检测规则
-  - `PatternRule` — 模式匹配单元（exact/contains/regex + weight）
+  - `PatternRule` — 模式匹配单元（exact/contains/regex/word + weight）
   - `FileRule` — 文件证据规则
   - `IDERule` — IDE 扩展规则
   - `ConfigRule` — 配置提取规则

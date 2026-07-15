@@ -1,9 +1,11 @@
 package scanner
 
 import (
+	"context"
 	"encoding/json"
 	"os/exec"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/dlclark/regexp2"
@@ -12,11 +14,15 @@ import (
 )
 
 // PackageScanner detects agents via installed packages (npm, pip, apt, etc.).
-type PackageScanner struct{}
+type PackageScanner struct {
+	cache map[string][]pkgInfo // per-manager package list cache
+}
 
 // NewPackageScanner creates a new PackageScanner.
 func NewPackageScanner() *PackageScanner {
-	return &PackageScanner{}
+	return &PackageScanner{
+		cache: make(map[string][]pkgInfo),
+	}
 }
 
 // PackageManager defines how to query a specific package manager.
@@ -107,13 +113,21 @@ type pkgInfo struct {
 }
 
 func (ps *PackageScanner) listPackages(mgr PackageManager) []pkgInfo {
-	var pkgs []pkgInfo
-
-	cmd := exec.Command(mgr.Command, mgr.ListCmd...)
-	out, err := cmd.Output()
-	if err != nil {
+	if pkgs, ok := ps.cache[mgr.Name]; ok {
 		return pkgs
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, mgr.Command, mgr.ListCmd...)
+	out, err := cmd.Output()
+	if err != nil {
+		ps.cache[mgr.Name] = nil
+		return nil
+	}
+
+	var pkgs []pkgInfo
 
 	output := string(out)
 
@@ -134,6 +148,7 @@ func (ps *PackageScanner) listPackages(mgr PackageManager) []pkgInfo {
 		pkgs = ps.parseGenericList(output)
 	}
 
+	ps.cache[mgr.Name] = pkgs
 	return pkgs
 }
 

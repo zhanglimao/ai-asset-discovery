@@ -59,6 +59,30 @@ func TestProcessScanner_MatchPattern(t *testing.T) {
 			value:   "this is a test",
 			want:    true,
 		},
+		{
+			name:    "word match standalone",
+			pattern: model.PatternRule{Type: "word", Value: "omp", Weight: 5},
+			value:   "omp",
+			want:    true,
+		},
+		{
+			name:    "word match with boundaries",
+			pattern: model.PatternRule{Type: "word", Value: "omp", Weight: 5},
+			value:   "/usr/bin/omp --version",
+			want:    true,
+		},
+		{
+			name:    "word no match (substring of longer word)",
+			pattern: model.PatternRule{Type: "word", Value: "omp", Weight: 5},
+			value:   "WUDFCompanionHost",
+			want:    false,
+		},
+		{
+			name:    "word match (CamelCase boundary)",
+			pattern: model.PatternRule{Type: "word", Value: "Claw", Weight: 5},
+			value:   "openClaw",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
